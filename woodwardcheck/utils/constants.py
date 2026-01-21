@@ -44,6 +44,9 @@ class Protocol(Enum):
     HTTP = auto()
     HTTPS = auto()
     SNMP = auto()
+    VNC = auto()
+    TELNET = auto()
+    SSH = auto()
 
 
 class CheckResult(Enum):
@@ -70,6 +73,9 @@ DEFAULT_PORTS: Dict[Protocol, int] = {
     Protocol.HTTP: 80,
     Protocol.HTTPS: 443,
     Protocol.SNMP: 161,
+    Protocol.VNC: 5900,
+    Protocol.TELNET: 23,
+    Protocol.SSH: 22,
 }
 
 # Common vulnerable firmware versions (example data)
@@ -125,6 +131,10 @@ INSECURE_PORTS: Dict[int, str] = {
     69: "TFTP",
     513: "rlogin",
     514: "rsh",
+    5900: "VNC",
+    5901: "VNC",
+    5902: "VNC",
+    5903: "VNC",
 }
 
 # Secure protocol alternatives
@@ -134,6 +144,7 @@ SECURE_ALTERNATIVES: Dict[str, str] = {
     "HTTP": "HTTPS",
     "SNMP v1/v2c": "SNMP v3",
     "Modbus TCP": "Modbus TCP with TLS",
+    "VNC": "VNC with TLS/SSH tunnel",
 }
 
 # IEC 62443 compliance mapping

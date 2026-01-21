@@ -70,7 +70,7 @@ For more information, see: https://github.com/woodwardcheck/woodwardcheck
     )
     conn_group.add_argument(
         "--protocol",
-        choices=["modbus-tcp", "http", "https", "snmp"],
+        choices=["modbus-tcp", "http", "https", "snmp", "vnc", "telnet", "ssh"],
         default="modbus-tcp",
         help="Communication protocol (default: modbus-tcp)",
     )
@@ -79,6 +79,51 @@ For more information, see: https://github.com/woodwardcheck/woodwardcheck
         type=int,
         default=30,
         help="Connection timeout in seconds (default: 30)",
+    )
+
+    # Protocol-specific port options
+    port_group = parser.add_argument_group("Protocol Port Options")
+    port_group.add_argument(
+        "--modbus-port",
+        type=int,
+        default=502,
+        help="Modbus TCP port (default: 502)",
+    )
+    port_group.add_argument(
+        "--http-port",
+        type=int,
+        default=80,
+        help="HTTP port (default: 80)",
+    )
+    port_group.add_argument(
+        "--https-port",
+        type=int,
+        default=443,
+        help="HTTPS port (default: 443)",
+    )
+    port_group.add_argument(
+        "--snmp-port",
+        type=int,
+        default=161,
+        help="SNMP port (default: 161)",
+    )
+    port_group.add_argument(
+        "--vnc-port",
+        type=int,
+        default=5900,
+        help="VNC port (default: 5900)",
+    )
+    port_group.add_argument(
+        "--telnet-port",
+        type=int,
+        default=23,
+        help="Telnet port (default: 23)",
+    )
+    port_group.add_argument(
+        "--ssh-port",
+        type=int,
+        default=22,
+        help="SSH port (default: 22)",
     )
 
     # Authentication options

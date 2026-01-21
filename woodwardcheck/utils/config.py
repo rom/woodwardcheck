@@ -21,6 +21,14 @@ class TargetConfig:
     port: int = 502
     protocol: Protocol = Protocol.MODBUS_TCP
     timeout: int = 30
+    custom_ports: Dict[Protocol, int] = field(default_factory=dict)
+
+    def get_port(self, protocol: Protocol) -> int:
+        """Get port for a protocol, using custom port if set."""
+        if protocol in self.custom_ports:
+            return self.custom_ports[protocol]
+        from .constants import DEFAULT_PORTS
+        return DEFAULT_PORTS.get(protocol, 502)
 
 
 @dataclass
@@ -180,6 +188,22 @@ class Config:
             self.target.protocol = Protocol[args.protocol.upper().replace("-", "_")]
         if hasattr(args, "timeout") and args.timeout:
             self.target.timeout = args.timeout
+
+        # Custom ports for protocols
+        if hasattr(args, "modbus_port") and args.modbus_port != 502:
+            self.target.custom_ports[Protocol.MODBUS_TCP] = args.modbus_port
+        if hasattr(args, "http_port") and args.http_port != 80:
+            self.target.custom_ports[Protocol.HTTP] = args.http_port
+        if hasattr(args, "https_port") and args.https_port != 443:
+            self.target.custom_ports[Protocol.HTTPS] = args.https_port
+        if hasattr(args, "snmp_port") and args.snmp_port != 161:
+            self.target.custom_ports[Protocol.SNMP] = args.snmp_port
+        if hasattr(args, "vnc_port") and args.vnc_port != 5900:
+            self.target.custom_ports[Protocol.VNC] = args.vnc_port
+        if hasattr(args, "telnet_port") and args.telnet_port != 23:
+            self.target.custom_ports[Protocol.TELNET] = args.telnet_port
+        if hasattr(args, "ssh_port") and args.ssh_port != 22:
+            self.target.custom_ports[Protocol.SSH] = args.ssh_port
 
         # Authentication
         if hasattr(args, "username") and args.username:

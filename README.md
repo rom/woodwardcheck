@@ -14,8 +14,10 @@ WoodwardCheck performs security checks, vulnerability assessments, and configura
 
 - **Modular Security Checks**: Authentication, network, configuration, firmware, and cryptographic assessments
 - **Vulnerability Scanning**: Detection of known CVEs and common security misconfigurations
-- **Multiple Protocols**: Support for Modbus TCP, HTTP/HTTPS, and SNMP
+- **Multiple Protocols**: Support for Modbus TCP, HTTP/HTTPS, SNMP, VNC, Telnet, and SSH
+- **Protocol Security Auditing**: VNC, Telnet, and SSH scanning with security configuration checks
 - **Flexible Test Selection**: Run specific checks, categories, or predefined profiles
+- **Custom Port Configuration**: Configurable ports for all supported protocols
 - **Multiple Report Formats**: HTML, JSON, RTF, Markdown, and plain text
 - **Safe Mode**: Read-only checks that won't disrupt production systems
 - **IEC 62443 Compliance**: Mapping to industrial security standards
@@ -134,6 +136,10 @@ woodwardcheck --list-categories
 | NET-003 | HTTP Without TLS | High |
 | NET-004 | SNMP Protocol Version | High |
 | NET-005 | Network Segmentation Check | High |
+| NET-006 | DNS Configuration | Low |
+| NET-007 | VNC Security Audit | High |
+| NET-008 | Telnet Security Audit | Critical |
+| NET-009 | SSH Security Audit | Medium |
 
 ### Vulnerability (VULN)
 
@@ -189,6 +195,14 @@ target:
   port: 502
   protocol: modbus-tcp
   timeout: 30
+  custom_ports:
+    vnc: 5900
+    telnet: 23
+    ssh: 22
+    http: 80
+    https: 443
+    snmp: 161
+    modbus_tcp: 502
 
 scan:
   categories:
@@ -211,6 +225,18 @@ logging:
 Use with:
 ```bash
 woodwardcheck --config woodwardcheck.yaml
+```
+
+### Command-Line Port Configuration
+
+You can also configure ports via command line:
+
+```bash
+# Use custom ports for protocols
+woodwardcheck 192.168.1.100 --vnc-port 5901 --ssh-port 2222 --telnet-port 2323
+
+# Combine with other options
+woodwardcheck 192.168.1.100 --http-port 8080 --https-port 8443 --format html -o report.html
 ```
 
 ## Report Formats
@@ -318,6 +344,14 @@ woodwardcheck/
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
+
+## Author
+
+**WoodwardCheck Security Team**
+
+- Project Lead: WoodwardCheck Contributors
+- Email: security@woodwardcheck.io
+- GitHub: [https://github.com/woodwardcheck/woodwardcheck](https://github.com/woodwardcheck/woodwardcheck)
 
 ## License
 

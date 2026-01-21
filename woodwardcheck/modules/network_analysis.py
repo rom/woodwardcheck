@@ -49,6 +49,9 @@ class NetworkAnalysisModule(BaseModule):
         502,   # Modbus TCP
         1883,  # MQTT
         4840,  # OPC UA
+        5900,  # VNC
+        5901,  # VNC Display 1
+        5902,  # VNC Display 2
         8080,  # HTTP Alt
         8443,  # HTTPS Alt
         20000, # DNP3
@@ -190,6 +193,10 @@ class NetworkAnalysisModule(BaseModule):
             502: "Modbus",
             1883: "MQTT",
             4840: "OPC-UA",
+            5900: "VNC",
+            5901: "VNC",
+            5902: "VNC",
+            5903: "VNC",
             8080: "HTTP-Alt",
             8443: "HTTPS-Alt",
             20000: "DNP3",
@@ -502,5 +509,309 @@ class NetworkAnalysisModule(BaseModule):
             result=CheckResult.INFO,
             description="DNS configuration check completed",
             details="Verify DNS servers are trusted and within the secured network",
+            evidence=evidence_list,
+        )
+
+    @check(
+        check_id="NET-007",
+        name="VNC Security Audit",
+        description="Check VNC service security configuration",
+        category=CheckCategory.NET,
+        severity=Severity.HIGH,
+        safe_mode_compatible=True,
+        cwe_ids=["CWE-287", "CWE-319"],
+        references=["IEC 62443-4-2 CR 1.1", "IEC 62443-4-2 CR 4.1"],
+    )
+    def check_vnc_security(self, **kwargs) -> Finding:
+        """Check VNC security configuration."""
+        evidence_list = []
+        security_issues = []
+
+        host = self.connection_manager.host
+
+        # Scan for VNC on common ports
+        vnc_ports = [5900, 5901, 5902, 5903]
+        vnc_services = []
+
+        for port in vnc_ports:
+            is_open, banner = self._scan_port(host, port, timeout=3.0)
+            if is_open:
+                vnc_services.append({
+                    "port": port,
+                    "banner": banner,
+                    "display": port - 5900,
+                })
+
+        if not vnc_services:
+            return Finding(
+                check_id="NET-007",
+                name="VNC Security Audit",
+                category=CheckCategory.NET,
+                severity=Severity.HIGH,
+                result=CheckResult.INFO,
+                description="VNC service not detected",
+                details="No VNC services found on common ports (5900-5903)",
+                evidence=evidence_list,
+            )
+
+        evidence_list.append(Evidence(
+            type="vnc_scan",
+            description="VNC service detection",
+            data={"vnc_services": vnc_services},
+        ))
+
+        # Test VNC connection security
+        vnc_conn = self.connection_manager.get_connection(Protocol.VNC)
+        result = vnc_conn.connect()
+
+        if result.success:
+            metadata = result.metadata or {}
+
+            evidence_list.append(Evidence(
+                type="vnc_connection",
+                description="VNC connection test",
+                data=metadata,
+            ))
+
+            # Check for no-auth vulnerability
+            if metadata.get("no_auth_required"):
+                security_issues.append("VNC allows connections without authentication")
+
+            # Check VNC version for known vulnerabilities
+            version = metadata.get("version", "")
+            if version:
+                evidence_list.append(Evidence(
+                    type="vnc_version",
+                    description="VNC protocol version",
+                    data={"version": version},
+                ))
+
+            vnc_conn.disconnect()
+
+        # VNC is inherently insecure (no native encryption)
+        security_issues.append("VNC transmits data without encryption by default")
+
+        issues_text = "\n".join(f"- {issue}" for issue in security_issues)
+
+        return Finding(
+            check_id="NET-007",
+            name="VNC Security Audit",
+            category=CheckCategory.NET,
+            severity=Severity.HIGH,
+            result=CheckResult.FAIL,
+            description=f"VNC service found with {len(security_issues)} security concern(s)",
+            details=f"VNC services detected on: {', '.join(str(s['port']) for s in vnc_services)}\n\n"
+                    f"Security concerns:\n{issues_text}",
+            remediation="Disable VNC if not required. If needed, use VNC over SSH tunnel or TLS. "
+                       "Ensure strong authentication is configured and restrict access via firewall rules.",
+            evidence=evidence_list,
+            cwe_ids=["CWE-287", "CWE-319"],
+        )
+
+    @check(
+        check_id="NET-008",
+        name="Telnet Security Audit",
+        description="Check Telnet service security (insecure protocol)",
+        category=CheckCategory.NET,
+        severity=Severity.CRITICAL,
+        safe_mode_compatible=True,
+        cwe_ids=["CWE-319", "CWE-523"],
+        references=["IEC 62443-4-2 CR 4.1", "NIST SP 800-82"],
+    )
+    def check_telnet_security(self, **kwargs) -> Finding:
+        """Check Telnet security - Telnet is inherently insecure."""
+        evidence_list = []
+
+        host = self.connection_manager.host
+
+        # Check if Telnet port is open
+        is_open, banner = self._scan_port(host, 23, timeout=3.0)
+
+        if not is_open:
+            return Finding(
+                check_id="NET-008",
+                name="Telnet Security Audit",
+                category=CheckCategory.NET,
+                severity=Severity.CRITICAL,
+                result=CheckResult.PASS,
+                description="Telnet service not detected",
+                details="Telnet (port 23) is not accessible - this is the secure configuration",
+                evidence=evidence_list,
+            )
+
+        evidence_list.append(Evidence(
+            type="telnet_port",
+            description="Telnet service detected",
+            data={
+                "port": 23,
+                "state": "open",
+                "banner": banner,
+            },
+        ))
+
+        # Try to get more details via Telnet connection
+        telnet_conn = self.connection_manager.get_connection(Protocol.TELNET)
+        result = telnet_conn.connect()
+
+        if result.success:
+            metadata = result.metadata or {}
+            telnet_banner = metadata.get("banner", "")
+
+            evidence_list.append(Evidence(
+                type="telnet_connection",
+                description="Telnet connection test",
+                data={
+                    "banner": telnet_banner,
+                    "cleartext_protocol": True,
+                },
+            ))
+
+            # Check if banner reveals system information
+            if telnet_banner:
+                evidence_list.append(Evidence(
+                    type="telnet_banner",
+                    description="Telnet banner information disclosure",
+                    data={"banner": telnet_banner},
+                ))
+
+            telnet_conn.disconnect()
+
+        security_issues = [
+            "Telnet transmits all data including credentials in cleartext",
+            "Telnet provides no protection against man-in-the-middle attacks",
+            "Telnet is deprecated for remote management of industrial systems",
+        ]
+
+        issues_text = "\n".join(f"- {issue}" for issue in security_issues)
+
+        return Finding(
+            check_id="NET-008",
+            name="Telnet Security Audit",
+            category=CheckCategory.NET,
+            severity=Severity.CRITICAL,
+            result=CheckResult.FAIL,
+            description="CRITICAL: Telnet service is enabled (insecure cleartext protocol)",
+            details=f"Telnet is accessible on port 23\n\n"
+                    f"Security risks:\n{issues_text}\n\n"
+                    f"Banner: {banner if banner else 'Not captured'}",
+            remediation="Disable Telnet immediately and use SSH for remote management. "
+                       "Telnet transmits credentials in cleartext and should never be used "
+                       "on industrial control systems.",
+            evidence=evidence_list,
+            cwe_ids=["CWE-319", "CWE-523"],
+        )
+
+    @check(
+        check_id="NET-009",
+        name="SSH Security Audit",
+        description="Check SSH service security configuration",
+        category=CheckCategory.NET,
+        severity=Severity.MEDIUM,
+        safe_mode_compatible=True,
+        cwe_ids=["CWE-327", "CWE-326"],
+        references=["IEC 62443-4-2 CR 4.1", "NIST SP 800-82"],
+    )
+    def check_ssh_security(self, **kwargs) -> Finding:
+        """Check SSH security configuration."""
+        evidence_list = []
+        security_issues = []
+
+        host = self.connection_manager.host
+
+        # Check if SSH port is open
+        is_open, banner = self._scan_port(host, 22, timeout=3.0)
+
+        if not is_open:
+            return Finding(
+                check_id="NET-009",
+                name="SSH Security Audit",
+                category=CheckCategory.NET,
+                severity=Severity.MEDIUM,
+                result=CheckResult.INFO,
+                description="SSH service not detected",
+                details="SSH (port 22) is not accessible. Consider enabling SSH as a secure "
+                       "alternative to Telnet for remote management.",
+                evidence=evidence_list,
+            )
+
+        evidence_list.append(Evidence(
+            type="ssh_port",
+            description="SSH service detected",
+            data={
+                "port": 22,
+                "state": "open",
+                "banner": banner,
+            },
+        ))
+
+        # Test SSH connection and gather security info
+        ssh_conn = self.connection_manager.get_connection(Protocol.SSH)
+        result = ssh_conn.connect()
+
+        if result.success:
+            metadata = result.metadata or {}
+            ssh_banner = metadata.get("banner", "")
+            server_version = metadata.get("server_version", "")
+            ssh1_supported = metadata.get("ssh1_supported", False)
+
+            evidence_list.append(Evidence(
+                type="ssh_connection",
+                description="SSH connection test",
+                data={
+                    "banner": ssh_banner,
+                    "server_version": server_version,
+                    "ssh1_supported": ssh1_supported,
+                },
+            ))
+
+            # Check for SSH-1 (insecure)
+            if ssh1_supported:
+                security_issues.append("SSH-1 protocol is supported (cryptographically weak)")
+
+            # Check for old/vulnerable SSH versions
+            if server_version:
+                # Check for known vulnerable versions
+                vulnerable_patterns = ["OpenSSH_4", "OpenSSH_5", "OpenSSH_6.6", "dropbear_0."]
+                for pattern in vulnerable_patterns:
+                    if pattern.lower() in server_version.lower():
+                        security_issues.append(f"Potentially outdated SSH version: {server_version}")
+                        break
+
+            # Banner might reveal too much information
+            if ssh_banner and len(ssh_banner) > 50:
+                security_issues.append("SSH banner may reveal excessive system information")
+
+            ssh_conn.disconnect()
+
+        if security_issues:
+            issues_text = "\n".join(f"- {issue}" for issue in security_issues)
+
+            return Finding(
+                check_id="NET-009",
+                name="SSH Security Audit",
+                category=CheckCategory.NET,
+                severity=Severity.HIGH if "SSH-1" in str(security_issues) else Severity.MEDIUM,
+                result=CheckResult.WARN,
+                description=f"SSH service found with {len(security_issues)} configuration concern(s)",
+                details=f"SSH is accessible on port 22\n\n"
+                       f"Server: {banner if banner else 'Unknown'}\n\n"
+                       f"Concerns:\n{issues_text}",
+                remediation="Update SSH to latest version, disable SSH-1 protocol, "
+                           "use strong key exchange algorithms and ciphers. "
+                           "Configure SSH banner to reveal minimal information.",
+                evidence=evidence_list,
+                cwe_ids=["CWE-327", "CWE-326"],
+            )
+
+        return Finding(
+            check_id="NET-009",
+            name="SSH Security Audit",
+            category=CheckCategory.NET,
+            severity=Severity.MEDIUM,
+            result=CheckResult.PASS,
+            description="SSH service detected with acceptable configuration",
+            details=f"SSH is accessible on port 22\n"
+                   f"Server: {banner if banner else 'Unknown'}\n\n"
+                   "SSH provides encrypted remote access - ensure strong authentication is configured.",
             evidence=evidence_list,
         )
