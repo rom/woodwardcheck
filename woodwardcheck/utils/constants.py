@@ -1,0 +1,185 @@
+"""
+Constants and definitions for WoodwardCheck.
+
+Contains EasyGen 3500XT specific constants, register maps, and configuration values.
+"""
+
+from enum import Enum, auto
+from typing import Dict, List, NamedTuple
+
+
+class Severity(Enum):
+    """Severity levels for security findings."""
+    CRITICAL = 4
+    HIGH = 3
+    MEDIUM = 2
+    LOW = 1
+    INFO = 0
+
+    def __str__(self) -> str:
+        return self.name
+
+    @classmethod
+    def from_string(cls, value: str) -> "Severity":
+        """Convert string to Severity enum."""
+        return cls[value.upper()]
+
+
+class CheckCategory(Enum):
+    """Categories of security checks."""
+    AUTH = "Authentication & Access Control"
+    NET = "Network Security"
+    CFG = "Configuration Security"
+    FW = "Firmware & Updates"
+    PROTO = "Communication Protocols"
+    CRYPTO = "Cryptographic Controls"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Protocol(Enum):
+    """Supported communication protocols."""
+    MODBUS_TCP = auto()
+    HTTP = auto()
+    HTTPS = auto()
+    SNMP = auto()
+
+
+class CheckResult(Enum):
+    """Result status for security checks."""
+    PASS = "PASS"
+    FAIL = "FAIL"
+    WARN = "WARNING"
+    ERROR = "ERROR"
+    SKIP = "SKIPPED"
+    INFO = "INFO"
+
+
+class ModbusRegister(NamedTuple):
+    """Modbus register definition."""
+    address: int
+    name: str
+    description: str
+    read_only: bool = True
+
+
+# Default ports for EasyGen 3500XT
+DEFAULT_PORTS: Dict[Protocol, int] = {
+    Protocol.MODBUS_TCP: 502,
+    Protocol.HTTP: 80,
+    Protocol.HTTPS: 443,
+    Protocol.SNMP: 161,
+}
+
+# Common vulnerable firmware versions (example data)
+VULNERABLE_FIRMWARE_VERSIONS: Dict[str, List[str]] = {
+    "3500XT": [
+        "1.0.0",
+        "1.0.1",
+        "1.1.0",
+        "2.0.0",
+        "2.0.1",
+    ],
+}
+
+# Current recommended firmware versions
+RECOMMENDED_FIRMWARE_VERSIONS: Dict[str, str] = {
+    "3500XT": "3.5.0",
+}
+
+# EasyGen 3500XT Modbus Register Map (partial)
+EASYGEN_3500XT_REGISTERS: Dict[str, ModbusRegister] = {
+    "device_id": ModbusRegister(0, "Device ID", "Device identification register"),
+    "firmware_version": ModbusRegister(1, "Firmware Version", "Current firmware version"),
+    "serial_number": ModbusRegister(2, "Serial Number", "Device serial number"),
+    "operating_mode": ModbusRegister(10, "Operating Mode", "Current operating mode"),
+    "generator_status": ModbusRegister(20, "Generator Status", "Generator operational status"),
+    "network_config": ModbusRegister(100, "Network Config", "Network configuration base"),
+    "security_config": ModbusRegister(200, "Security Config", "Security configuration base"),
+    "auth_enabled": ModbusRegister(201, "Auth Enabled", "Authentication enabled flag"),
+    "encryption_enabled": ModbusRegister(202, "Encryption", "Encryption enabled flag"),
+    "session_timeout": ModbusRegister(203, "Session Timeout", "Session timeout value"),
+    "log_config": ModbusRegister(300, "Log Config", "Logging configuration"),
+    "ntp_config": ModbusRegister(400, "NTP Config", "NTP server configuration"),
+}
+
+# Default credentials commonly found on EasyGen devices
+DEFAULT_CREDENTIALS: List[Dict[str, str]] = [
+    {"username": "admin", "password": "admin"},
+    {"username": "admin", "password": "password"},
+    {"username": "admin", "password": "1234"},
+    {"username": "admin", "password": ""},
+    {"username": "user", "password": "user"},
+    {"username": "operator", "password": "operator"},
+    {"username": "engineer", "password": "engineer"},
+    {"username": "woodward", "password": "woodward"},
+    {"username": "easygen", "password": "easygen"},
+    {"username": "service", "password": "service"},
+]
+
+# Common insecure ports to check
+INSECURE_PORTS: Dict[int, str] = {
+    21: "FTP",
+    23: "Telnet",
+    69: "TFTP",
+    513: "rlogin",
+    514: "rsh",
+}
+
+# Secure protocol alternatives
+SECURE_ALTERNATIVES: Dict[str, str] = {
+    "Telnet": "SSH",
+    "FTP": "SFTP/SCP",
+    "HTTP": "HTTPS",
+    "SNMP v1/v2c": "SNMP v3",
+    "Modbus TCP": "Modbus TCP with TLS",
+}
+
+# IEC 62443 compliance mapping
+IEC_62443_MAPPING: Dict[str, Dict[str, str]] = {
+    "AUTH-001": {"requirement": "FR1", "description": "Identification and Authentication Control"},
+    "AUTH-002": {"requirement": "FR1", "description": "Identification and Authentication Control"},
+    "AUTH-003": {"requirement": "FR1", "description": "Identification and Authentication Control"},
+    "NET-001": {"requirement": "FR4", "description": "Data Confidentiality"},
+    "NET-002": {"requirement": "FR4", "description": "Data Confidentiality"},
+    "CFG-001": {"requirement": "FR6", "description": "Timely Response to Events"},
+    "FW-001": {"requirement": "FR2", "description": "Use Control"},
+}
+
+# Scan profiles
+SCAN_PROFILES: Dict[str, Dict] = {
+    "quick-scan": {
+        "description": "Fast scan with essential checks only",
+        "categories": [CheckCategory.AUTH, CheckCategory.NET],
+        "min_severity": Severity.HIGH,
+        "timeout": 30,
+    },
+    "full-audit": {
+        "description": "Comprehensive security audit",
+        "categories": list(CheckCategory),
+        "min_severity": Severity.INFO,
+        "timeout": 300,
+    },
+    "compliance-62443": {
+        "description": "IEC 62443 compliance-focused audit",
+        "categories": list(CheckCategory),
+        "min_severity": Severity.LOW,
+        "compliance_mode": True,
+        "timeout": 180,
+    },
+    "network-only": {
+        "description": "Network security checks only",
+        "categories": [CheckCategory.NET, CheckCategory.PROTO],
+        "min_severity": Severity.LOW,
+        "timeout": 120,
+    },
+}
+
+# Report metadata
+REPORT_METADATA = {
+    "tool_name": "WoodwardCheck",
+    "tool_version": "1.0.0",
+    "vendor": "Security Audit Tools",
+    "description": "Security Audit Tool for Woodward EasyGen Controllers",
+}
