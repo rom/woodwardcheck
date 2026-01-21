@@ -70,7 +70,7 @@ For more information, see: https://github.com/woodwardcheck/woodwardcheck
     )
     conn_group.add_argument(
         "--protocol",
-        choices=["modbus-tcp", "http", "https", "snmp", "vnc", "telnet", "ssh"],
+        choices=["modbus-tcp", "http", "https", "snmp", "vnc", "telnet", "ssh", "ftp"],
         default="modbus-tcp",
         help="Communication protocol (default: modbus-tcp)",
     )
@@ -124,6 +124,12 @@ For more information, see: https://github.com/woodwardcheck/woodwardcheck
         type=int,
         default=22,
         help="SSH port (default: 22)",
+    )
+    port_group.add_argument(
+        "--ftp-port",
+        type=int,
+        default=21,
+        help="FTP port (default: 21)",
     )
 
     # Authentication options

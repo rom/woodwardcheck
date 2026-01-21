@@ -61,7 +61,7 @@ class TestArgumentParser:
     def test_parser_protocol_choices(self):
         """Test that protocol accepts valid choices."""
         parser = create_parser()
-        valid_protocols = ["modbus-tcp", "http", "https", "snmp", "vnc", "telnet", "ssh"]
+        valid_protocols = ["modbus-tcp", "http", "https", "snmp", "vnc", "telnet", "ssh", "ftp"]
         for protocol in valid_protocols:
             args = parser.parse_args(["192.168.1.100", "--protocol", protocol])
             assert args.protocol == protocol
@@ -84,6 +84,7 @@ class TestArgumentParser:
             "--vnc-port", "5901",
             "--telnet-port", "2323",
             "--ssh-port", "2222",
+            "--ftp-port", "2121",
         ])
         assert args.modbus_port == 8502
         assert args.http_port == 8080
@@ -92,6 +93,7 @@ class TestArgumentParser:
         assert args.vnc_port == 5901
         assert args.telnet_port == 2323
         assert args.ssh_port == 2222
+        assert args.ftp_port == 2121
 
     def test_parser_auth_arguments(self):
         """Test parsing authentication arguments."""

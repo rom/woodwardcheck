@@ -241,6 +241,8 @@ class Config:
             self.target.custom_ports[Protocol.TELNET] = args.telnet_port
         if hasattr(args, "ssh_port") and args.ssh_port != 22:
             self.target.custom_ports[Protocol.SSH] = args.ssh_port
+        if hasattr(args, "ftp_port") and args.ftp_port != 21:
+            self.target.custom_ports[Protocol.FTP] = args.ftp_port
 
         # Authentication
         if hasattr(args, "username") and args.username:

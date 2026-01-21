@@ -5,8 +5,18 @@
 target:
   host: 192.168.1.100
   port: 502
-  protocol: modbus-tcp  # modbus-tcp, http, https, snmp
+  protocol: modbus-tcp  # modbus-tcp, http, https, snmp, vnc, telnet, ssh, ftp
   timeout: 30
+  # Custom ports for protocol scanning (optional)
+  # custom_ports:
+  #   modbus_tcp: 502
+  #   http: 80
+  #   https: 443
+  #   snmp: 161
+  #   vnc: 5900
+  #   telnet: 23
+  #   ssh: 22
+  #   ftp: 21
 
 # Authentication settings
 authentication:

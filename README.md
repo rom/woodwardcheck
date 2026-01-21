@@ -14,8 +14,8 @@ WoodwardCheck performs security checks, vulnerability assessments, and configura
 
 - **Modular Security Checks**: Authentication, network, configuration, firmware, and cryptographic assessments
 - **Vulnerability Scanning**: Detection of known CVEs and common security misconfigurations
-- **Multiple Protocols**: Support for Modbus TCP, HTTP/HTTPS, SNMP, VNC, Telnet, and SSH
-- **Protocol Security Auditing**: VNC, Telnet, and SSH scanning with security configuration checks
+- **Multiple Protocols**: Support for Modbus TCP, HTTP/HTTPS, SNMP, VNC, Telnet, SSH, and FTP
+- **Protocol Security Auditing**: VNC, Telnet, SSH, and FTP scanning with security configuration checks
 - **Flexible Test Selection**: Run specific checks, categories, or predefined profiles
 - **Custom Port Configuration**: Configurable ports for all supported protocols
 - **Multiple Report Formats**: HTML, JSON, RTF, Markdown, and plain text
@@ -140,6 +140,7 @@ woodwardcheck --list-categories
 | NET-007 | VNC Security Audit | High |
 | NET-008 | Telnet Security Audit | Critical |
 | NET-009 | SSH Security Audit | Medium |
+| NET-010 | FTP Security Audit | Critical |
 
 ### Vulnerability (VULN)
 
@@ -199,6 +200,7 @@ target:
     vnc: 5900
     telnet: 23
     ssh: 22
+    ftp: 21
     http: 80
     https: 443
     snmp: 161
@@ -290,10 +292,10 @@ You can also configure ports via command line:
 
 ```bash
 # Use custom ports for protocols
-woodwardcheck 192.168.1.100 --vnc-port 5901 --ssh-port 2222 --telnet-port 2323
+woodwardcheck 192.168.1.100 --vnc-port 5901 --ssh-port 2222 --telnet-port 2323 --ftp-port 2121
 
 # Combine with other options
-woodwardcheck 192.168.1.100 --http-port 8080 --https-port 8443 --format html -o report.html
+woodwardcheck 192.168.1.100 --http-port 8080 --https-port 8443 --ftp-port 2121 --format html -o report.html
 ```
 
 ## Report Formats

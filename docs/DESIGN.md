@@ -21,7 +21,7 @@ WoodwardCheck is a comprehensive security auditing tool designed for Woodward Ea
 │         (HTML | JSON | RTF | Markdown | Text)                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                    Target Interface Layer                           │
-│    (Modbus TCP | HTTP/HTTPS | SNMP | VNC | Telnet | SSH)            │
+│    (Modbus TCP | HTTP/HTTPS | SNMP | VNC | Telnet | SSH | FTP)      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -130,6 +130,7 @@ User Input → CLI Parser → Engine
 | NET-007 | VNC Security Audit | High |
 | NET-008 | Telnet Security Audit | Critical |
 | NET-009 | SSH Security Audit | Medium |
+| NET-010 | FTP Security Audit | Critical |
 
 ### Configuration Security (CFG)
 | Check ID | Description | Severity |
@@ -165,6 +166,7 @@ User Input → CLI Parser → Engine
 - VNC (Port 5900) - Security auditing with authentication checks
 - Telnet (Port 23) - Insecure protocol detection
 - SSH (Port 22) - Secure remote access configuration checks
+- FTP (Port 21) - Insecure file transfer protocol detection
 - ToolKit communication (Proprietary)
 
 ### Protocol Port Configuration
@@ -176,6 +178,7 @@ All protocol ports can be customized via command-line arguments:
 - `--vnc-port` - VNC port (default: 5900)
 - `--telnet-port` - Telnet port (default: 23)
 - `--ssh-port` - SSH port (default: 22)
+- `--ftp-port` - FTP port (default: 21)
 
 ### Register Map Knowledge Base
 The tool maintains a knowledge base of EasyGen 3500XT Modbus registers:
@@ -484,6 +487,7 @@ woodwardcheck/
 | 1.0.0 | 2024-01 | Initial release |
 | 1.1.0 | 2024-01 | Added VNC, Telnet, SSH protocol support and security auditing |
 | 1.2.0 | 2024-01 | Added file-based default credentials, custom credential files support, comprehensive unit tests |
+| 1.3.0 | 2024-01 | Added FTP protocol support with security auditing (NET-010), custom FTP port configuration |
 
 ## Author
 
