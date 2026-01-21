@@ -97,6 +97,7 @@ RECOMMENDED_FIRMWARE_VERSIONS: Dict[str, str] = {
 }
 
 # EasyGen 3500XT Modbus Register Map (partial)
+# Reference: Woodward EasyGen Configuration Manual, Interface Manual 37472
 EASYGEN_3500XT_REGISTERS: Dict[str, ModbusRegister] = {
     "device_id": ModbusRegister(0, "Device ID", "Device identification register"),
     "firmware_version": ModbusRegister(1, "Firmware Version", "Current firmware version"),
@@ -110,6 +111,145 @@ EASYGEN_3500XT_REGISTERS: Dict[str, ModbusRegister] = {
     "session_timeout": ModbusRegister(203, "Session Timeout", "Session timeout value"),
     "log_config": ModbusRegister(300, "Log Config", "Logging configuration"),
     "ntp_config": ModbusRegister(400, "NTP Config", "NTP server configuration"),
+    # Code Level / Password System Registers
+    "code_level_active": ModbusRegister(210, "Active Code Level", "Currently active code level (0-5)"),
+    "code_level_timeout": ModbusRegister(211, "Code Level Timeout", "Time remaining until code level expires (seconds)"),
+    "password_cl1": ModbusRegister(220, "CL1 Password", "Code Level 1 (Service) password", read_only=False),
+    "password_cl2": ModbusRegister(221, "CL2 Password", "Code Level 2 (Temp Commission) password", read_only=False),
+    "password_cl3": ModbusRegister(222, "CL3 Password", "Code Level 3 (Commission) password", read_only=False),
+    # CAN Interface Configuration
+    "can1_node_id": ModbusRegister(8950, "CAN1 Node-ID", "CAN Interface 1 Node-ID (1-16, also Modbus Slave ID)"),
+    "can1_baudrate": ModbusRegister(8951, "CAN1 Baud Rate", "CAN Interface 1 Baud Rate"),
+    "can2_node_id": ModbusRegister(8960, "CAN2 Node-ID", "CAN Interface 2 Node-ID"),
+    "can3_node_id": ModbusRegister(8970, "CAN3 Node-ID", "CAN Interface 3 Node-ID (3400/3500 only)"),
+    # Ethernet Configuration
+    "eth_ip_address": ModbusRegister(110, "IP Address", "Ethernet IP Address"),
+    "eth_subnet_mask": ModbusRegister(114, "Subnet Mask", "Ethernet Subnet Mask"),
+    "eth_gateway": ModbusRegister(118, "Gateway", "Ethernet Default Gateway"),
+    "eth_dhcp_enabled": ModbusRegister(122, "DHCP Enabled", "DHCP Enable Flag"),
+}
+
+# EasyGen Modbus Address Ranges
+# Reference: Application Note AN308-1102
+EASYGEN_MODBUS_ADDRESS_RANGES: Dict[str, Dict[str, int]] = {
+    "configuration": {"start": 40001, "end": 450000},
+    "input_registers": {"start": 1, "end": 271},
+    "holding_registers": {"start": 1, "end": 65535},
+}
+
+# Modbus function codes used by EasyGen
+EASYGEN_MODBUS_FUNCTIONS: Dict[int, str] = {
+    3: "Read Holding Registers",
+    4: "Read Input Registers",
+    6: "Write Single Register",
+    16: "Write Multiple Registers",
+    43: "Read Device Identification (MEI)",
+}
+
+# Woodward EasyGen Code Level System
+# Multi-level password protection for configuration access
+# Reference: EasyGen-2000/3000 Configuration Manual
+class CodeLevel(Enum):
+    """Woodward EasyGen Code Levels for access control."""
+    CL0 = 0  # Basic/Monitoring - limited access (language, date, time only)
+    CL1 = 1  # Service - non-critical parameters, expires after 2 hours
+    CL2 = 2  # Temporary Commission - algorithm-defined password
+    CL3 = 3  # Commission - full access to most parameters, expires after 2 hours
+    SERVICE = 4  # Service level (vendor access)
+    COMMISSION = 5  # Commissioning level
+
+
+# EasyGen Default Code Level Passwords
+# CRITICAL: These are documented default passwords from Woodward manuals
+EASYGEN_DEFAULT_CODE_PASSWORDS: Dict[str, str] = {
+    "CL1": "0001",  # Default Service level password
+    "CL2": "0002",  # Default Temporary Commission password
+    "CL3": "0003",  # Default Commission password (varies by device)
+    "CL5": "500",   # Default code level 5 password
+    "SERVICE": "0001",  # Service level often same as CL1
+    "COMMISSION": "0003",
+}
+
+# Common numeric passwords for EasyGen (4-digit range 0000-9999)
+EASYGEN_NUMERIC_PASSWORDS: List[str] = [
+    "0000",  # Disables password expiration if entered
+    "0001",  # Default CL1 password
+    "0002",  # Default CL2 password
+    "0003",
+    "1234",
+    "1111",
+    "2222",
+    "3333",
+    "4444",
+    "5555",
+    "6666",
+    "7777",
+    "8888",
+    "9999",
+    "0123",
+    "1000",
+    "2000",
+    "3000",
+    "500",   # CL5 default
+    "123",
+    "321",
+    "111",
+    "000",
+]
+
+# MicroNet Plus/TMR CPU Types and Security Levels
+# Reference: Woodward Product Manual 26479 (Cyber Security Manual)
+MICRONET_CPU_TYPES: Dict[str, Dict[str, any]] = {
+    "5466-1035": {
+        "name": "MicroNet Plus Original",
+        "cyber_secure": False,
+        "security_issues": [
+            "Protocol sniffing possible",
+            "Static passwords",
+            "Clear text passwords",
+            "Many open ports",
+        ],
+        "recommendation": "Upgrade to cyber-secure CPU",
+    },
+    "5466-1141": {
+        "name": "MicroNet Plus",
+        "cyber_secure": False,
+        "security_issues": ["Does not meet security requirements"],
+        "recommendation": "Upgrade to 5466-1145 or newer",
+    },
+    "5466-1145": {
+        "name": "MicroNet Plus CPU5200 Cyber Security",
+        "cyber_secure": True,
+        "features": [
+            "SSH communication encryption",
+            "Password authentication at control",
+            "Embedded firewall",
+            "Single port open (SSH)",
+            "NERC-CIP compliant",
+        ],
+    },
+    "5466-1047": {
+        "name": "MicroNet TMR Original",
+        "cyber_secure": False,
+        "security_issues": ["Does not meet security requirements"],
+        "recommendation": "Upgrade to 5466-1347 or newer",
+    },
+    "5466-1247": {
+        "name": "MicroNet TMR",
+        "cyber_secure": False,
+        "security_issues": ["Does not meet security requirements"],
+        "recommendation": "Upgrade to 5466-1347",
+    },
+    "5466-1347": {
+        "name": "MicroNet TMR Cyber Security",
+        "cyber_secure": True,
+        "features": [
+            "CANOpen fieldbus capability",
+            "User password levels",
+            "Secure password authentication",
+            "Achilles certified",
+        ],
+    },
 }
 
 # Default credentials commonly found on EasyGen devices
@@ -125,6 +265,14 @@ _FALLBACK_CREDENTIALS: List[Dict[str, str]] = [
     {"username": "woodward", "password": "woodward"},
     {"username": "easygen", "password": "easygen"},
     {"username": "service", "password": "service"},
+    # EasyGen code level numeric passwords
+    {"username": "admin", "password": "0001"},
+    {"username": "admin", "password": "0002"},
+    {"username": "admin", "password": "0003"},
+    {"username": "service", "password": "0001"},
+    {"username": "commission", "password": "0003"},
+    {"username": "", "password": "0001"},
+    {"username": "", "password": "500"},
 ]
 
 
@@ -257,6 +405,14 @@ IEC_62443_MAPPING: Dict[str, Dict[str, str]] = {
     "NET-002": {"requirement": "FR4", "description": "Data Confidentiality"},
     "CFG-001": {"requirement": "FR6", "description": "Timely Response to Events"},
     "FW-001": {"requirement": "FR2", "description": "Use Control"},
+    # Woodward-specific checks IEC 62443 mapping
+    "WW-001": {"requirement": "FR1", "description": "Identification and Authentication Control - Code Levels"},
+    "WW-002": {"requirement": "FR2", "description": "Use Control - Cyber Security Assessment"},
+    "WW-003": {"requirement": "FR4", "description": "Data Confidentiality - ToolKit Interface"},
+    "WW-004": {"requirement": "FR5", "description": "Restricted Data Flow - CAN Bus Security"},
+    "WW-005": {"requirement": "FR1", "description": "Identification and Authentication Control - Session Timeout"},
+    "WW-006": {"requirement": "FR2", "description": "Use Control - Device Security Assessment"},
+    "WW-007": {"requirement": "FR7", "description": "Resource Availability - Device Identification"},
 }
 
 # Scan profiles
@@ -289,22 +445,217 @@ SCAN_PROFILES: Dict[str, Dict] = {
 }
 
 # Woodward device types
+# Reference: Woodward Product Documentation, Security Manuals
 WOODWARD_DEVICE_TYPES: Dict[str, Dict[str, any]] = {
+    # EasyGen 3000 Series (Non-XT)
+    "EasyGen-3100": {
+        "description": "Woodward EasyGen 3100 Generator Controller",
+        "series": "3000",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN", "RS-485"],
+    },
+    "EasyGen-3200": {
+        "description": "Woodward EasyGen 3200 Generator Controller",
+        "series": "3000",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN", "RS-485"],
+    },
+    "EasyGen-3400": {
+        "description": "Woodward EasyGen 3400 Generator Controller",
+        "series": "3000",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN", "CAN3", "RS-485"],
+    },
+    "EasyGen-3500": {
+        "description": "Woodward EasyGen 3500 Generator Controller",
+        "series": "3000",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN", "CAN3", "RS-485"],
+    },
+    # EasyGen 3000XT Series (Enhanced)
+    "EasyGen-3100XT": {
+        "description": "Woodward EasyGen 3100XT Generator Controller",
+        "series": "3000XT",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,  # Per manual: "shall not be considered a cybersecure product"
+        "security_warning": "Developed without secure development life cycle process",
+        "interfaces": ["Ethernet", "USB", "CAN", "RS-485"],
+        "protocols": ["Modbus TCP", "CANopen", "SAE J1939", "Modbus RTU"],
+    },
+    "EasyGen-3200XT": {
+        "description": "Woodward EasyGen 3200XT Generator Controller",
+        "series": "3000XT",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "security_warning": "Developed without secure development life cycle process",
+        "interfaces": ["Ethernet", "USB", "CAN", "RS-485"],
+        "protocols": ["Modbus TCP", "CANopen", "SAE J1939", "Modbus RTU"],
+    },
+    "EasyGen-3400XT": {
+        "description": "Woodward EasyGen 3400XT Generator Controller",
+        "series": "3000XT",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "security_warning": "Developed without secure development life cycle process",
+        "interfaces": ["Ethernet", "EthernetB", "EthernetC", "USB", "CAN", "CAN3", "RS-485"],
+        "protocols": ["Modbus TCP", "CANopen", "SAE J1939", "Modbus RTU", "PROFINET"],
+    },
     "EasyGen-3500XT": {
         "description": "Woodward EasyGen 3500XT Generator Controller",
+        "series": "3000XT",
         "default_ports": [80, 443, 502, 5900],
         "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "security_warning": "Developed without secure development life cycle process",
+        "interfaces": ["Ethernet", "EthernetB", "EthernetC", "USB", "CAN", "CAN3", "RS-485"],
+        "protocols": ["Modbus TCP", "CANopen", "SAE J1939", "Modbus RTU", "PROFINET"],
     },
+    # EasyGen 2000 Series
+    "EasyGen-2200": {
+        "description": "Woodward EasyGen 2200 Generator Controller",
+        "series": "2000",
+        "default_ports": [80, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN", "RS-485"],
+    },
+    "EasyGen-2500": {
+        "description": "Woodward EasyGen 2500 Generator Controller",
+        "series": "2000",
+        "default_ports": [80, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN", "RS-485"],
+    },
+    # EasyGen 1000 Series
+    "EasyGen-1000": {
+        "description": "Woodward EasyGen 1000 Generator Controller",
+        "series": "1000",
+        "default_ports": [502],
+        "vnc_support": False,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["RS-485"],
+    },
+    # Breaker Control Series
     "Breaker-Control-LS5": {
         "description": "Woodward Breaker-Control LS5 Switchgear Controller",
+        "series": "LS",
         "default_ports": [80, 443, 502, 5900],
         "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN"],
     },
     "Breaker-Control-LS6": {
         "description": "Woodward Breaker-Control LS6 Switchgear Controller",
+        "series": "LS",
         "default_ports": [80, 443, 502, 5900],
         "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN"],
     },
+    "Breaker-Control-LS6XT": {
+        "description": "Woodward Breaker-Control LS6XT Switchgear Controller",
+        "series": "LS",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+        "code_levels": True,
+        "toolkit_support": True,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet", "USB", "CAN"],
+    },
+    # MicroNet Plus/TMR Series
+    "MicroNet-Plus": {
+        "description": "Woodward MicroNet Plus Turbine Controller",
+        "series": "MicroNet",
+        "default_ports": [22, 502],
+        "vnc_support": False,
+        "code_levels": False,
+        "toolkit_support": False,
+        "cyber_secure": "varies",  # Depends on CPU version
+        "interfaces": ["Ethernet", "CAN"],
+        "protocols": ["Modbus TCP", "Modbus Serial", "OPC"],
+    },
+    "MicroNet-TMR": {
+        "description": "Woodward MicroNet TMR Triple Modular Redundant Controller",
+        "series": "MicroNet",
+        "default_ports": [22, 502],
+        "vnc_support": False,
+        "code_levels": False,
+        "toolkit_support": False,
+        "cyber_secure": "varies",  # Depends on CPU version
+        "interfaces": ["Ethernet", "CAN"],
+        "protocols": ["Modbus TCP", "Modbus Serial", "OPC", "CANOpen"],
+    },
+    # easYview (HMI for EasyGen XT)
+    "easYview": {
+        "description": "Woodward easYview Remote HMI Display",
+        "series": "easYview",
+        "default_ports": [5900],
+        "vnc_support": True,
+        "code_levels": False,
+        "toolkit_support": False,
+        "cyber_secure": False,
+        "interfaces": ["Ethernet"],
+        "notes": "Connects to easYgen-XT/LS-6XT devices via VNC",
+    },
+}
+
+# EasyGen 3000XT Default Open Ethernet Ports
+# Reference: Woodward Security Manual B35244
+EASYGEN_3000XT_DEFAULT_PORTS: Dict[int, Dict[str, str]] = {
+    80: {"service": "HTTP", "risk": "HIGH", "notes": "Web interface - unencrypted"},
+    443: {"service": "HTTPS", "risk": "MEDIUM", "notes": "Web interface - encrypted"},
+    502: {"service": "Modbus TCP", "risk": "HIGH", "notes": "Industrial protocol - no native encryption"},
+    5900: {"service": "VNC", "risk": "HIGH", "notes": "Remote display - often no authentication"},
+}
+
+# EasyGen security configuration recommendations
+# Reference: Woodward Security Manual B35244
+EASYGEN_SECURITY_RECOMMENDATIONS: Dict[str, str] = {
+    "physical_security": "Limit physical access to only authorized and trained personnel",
+    "ethernet_security": "Minimize external Ethernet connections, use firewall/IDS/IPS",
+    "usb_security": "USB interface is read-only except for ToolKit. Use USB port caps when not in use",
+    "can_security": "Protect CAN interfaces from DoS and adversary-in-the-middle attacks",
+    "password_security": "Change all default passwords, use unique passwords per code level",
+    "port_security": "Use RJ-45 caps to protect unused Ethernet ports",
+    "decommissioning": "Remove sensitive configuration and restore factory defaults before disposal",
 }
 
 # VNC ports to scan (display :0 through :9)

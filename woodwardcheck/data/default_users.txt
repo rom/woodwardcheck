@@ -1,6 +1,7 @@
 # Default usernames for Woodward EasyGen and similar industrial control systems
 # These are commonly found on ICS devices and should be tested during security audits
 # One username per line. Lines starting with # are comments.
+# Reference: Woodward Security Manual B35244, Product Manual 26479
 
 # Common administrative accounts
 admin
@@ -19,6 +20,19 @@ easygen
 service
 engineer
 
+# Woodward EasyGen code level accounts
+# Code levels use numeric passwords (0000-9999), usernames may be blank
+cl1
+cl2
+cl3
+service
+commission
+
+# Woodward MicroNet accounts
+micronet
+turbine
+control
+
 # Industrial control system common accounts
 tech
 technician
@@ -32,5 +46,5 @@ setup
 oem
 vendor
 
-# Empty username (some systems allow this)
+# Empty username (some systems allow this, including EasyGen)
 
