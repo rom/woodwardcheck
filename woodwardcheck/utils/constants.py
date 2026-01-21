@@ -47,6 +47,7 @@ class Protocol(Enum):
     VNC = auto()
     TELNET = auto()
     SSH = auto()
+    FTP = auto()
 
 
 class CheckResult(Enum):
@@ -76,6 +77,7 @@ DEFAULT_PORTS: Dict[Protocol, int] = {
     Protocol.VNC: 5900,
     Protocol.TELNET: 23,
     Protocol.SSH: 22,
+    Protocol.FTP: 21,
 }
 
 # Common vulnerable firmware versions (example data)
@@ -185,6 +187,36 @@ SCAN_PROFILES: Dict[str, Dict] = {
         "min_severity": Severity.LOW,
         "timeout": 120,
     },
+}
+
+# Woodward device types
+WOODWARD_DEVICE_TYPES: Dict[str, Dict[str, any]] = {
+    "EasyGen-3500XT": {
+        "description": "Woodward EasyGen 3500XT Generator Controller",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+    },
+    "Breaker-Control-LS5": {
+        "description": "Woodward Breaker-Control LS5 Switchgear Controller",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+    },
+    "Breaker-Control-LS6": {
+        "description": "Woodward Breaker-Control LS6 Switchgear Controller",
+        "default_ports": [80, 443, 502, 5900],
+        "vnc_support": True,
+    },
+}
+
+# VNC ports to scan (display :0 through :9)
+VNC_PORTS: List[int] = [5900, 5901, 5902, 5903, 5904, 5905, 5906, 5907, 5908, 5909]
+
+# Woodward VNC protocol settings requirements
+# These settings must be configured for proper Woodward VNC operation
+WOODWARD_VNC_SETTINGS: Dict[str, any] = {
+    "RelativePTR": False,  # Must be false for Woodward VNC compatibility
+    "Quality": "high",     # Must be set to high for proper display
+    "description": "Required VNC client settings for Woodward devices",
 }
 
 # Report metadata
