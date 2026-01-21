@@ -1,0 +1,64 @@
+# WoodwardCheck Configuration File
+# Copy this file to woodwardcheck.yaml and customize as needed
+
+# Target device configuration
+target:
+  host: 192.168.1.100
+  port: 502
+  protocol: modbus-tcp  # modbus-tcp, http, https, snmp
+  timeout: 30
+
+# Authentication settings
+authentication:
+  username: admin
+  # password: your_password  # Not recommended - use password_file instead
+  password_file: /path/to/credentials.txt
+  use_default_creds: true  # Test for default credentials
+
+# Scan configuration
+scan:
+  # Categories to include (comment out to include all)
+  categories:
+    - auth
+    - net
+    - cfg
+    - fw
+    - proto
+    - crypto
+
+  # Minimum severity level to report
+  min_severity: info  # critical, high, medium, low, info
+
+  # Specific checks to run (overrides categories if set)
+  # checks:
+  #   - AUTH-001
+  #   - NET-001
+
+  # Checks to exclude
+  # exclude_checks:
+  #   - FW-001
+
+  # Execution settings
+  timeout: 300        # Overall scan timeout in seconds
+  parallel: true      # Run checks in parallel
+  safe_mode: true     # Only run read-only checks
+  rate_limit: 0.5     # Seconds between requests
+
+# Output configuration
+output:
+  format: html        # text, html, json, markdown, rtf
+  path: ./reports/
+  # filename: custom_report_name  # Optional custom filename
+  include_evidence: true
+  include_raw: false
+  verbose: false
+
+# Logging configuration
+logging:
+  level: INFO         # DEBUG, INFO, WARNING, ERROR
+  file: ./woodwardcheck.log
+  audit_trail: true   # Create detailed audit trail
+  audit_dir: ./audit_logs/
+
+# Use a predefined profile (overrides other scan settings)
+# profile: quick-scan  # quick-scan, full-audit, compliance-62443, network-only

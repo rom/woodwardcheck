@@ -1,0 +1,350 @@
+.\" Man page for woodwardcheck
+.\" Contact: https://github.com/woodwardcheck/woodwardcheck
+.TH WOODWARDCHECK 1 "January 2024" "woodwardcheck 1.0.0" "User Commands"
+
+.SH NAME
+woodwardcheck \- Security Audit Tool for Woodward EasyGen Controllers
+
+.SH SYNOPSIS
+.B woodwardcheck
+[\fIOPTIONS\fR] \fITARGET\fR
+.br
+.B woodwardcheck
+\-\-list\-checks
+.br
+.B woodwardcheck
+\-\-list\-profiles
+.br
+.B woodwardcheck
+\-\-help
+
+.SH DESCRIPTION
+.B woodwardcheck
+is a comprehensive security auditing tool designed for Woodward EasyGen
+generator controllers, with specific focus on the 3500XT model. It performs
+security checks, vulnerability assessments, and configuration audits to
+ensure industrial control systems meet security best practices and
+compliance requirements such as IEC 62443.
+
+.SH OPTIONS
+
+.SS "Target Options"
+.TP
+.I TARGET
+IP address or hostname of the target device to audit.
+
+.SS "Connection Options"
+.TP
+.BR \-p ", " \-\-port " " \fIPORT\fR
+Target port number. Default: 502 (Modbus TCP).
+
+.TP
+.BR \-\-protocol " " \fIPROTOCOL\fR
+Communication protocol to use. Options: modbus\-tcp, http, https, snmp.
+Default: modbus\-tcp.
+
+.TP
+.BR \-\-timeout " " \fISECONDS\fR
+Connection timeout in seconds. Default: 30.
+
+.SS "Authentication Options"
+.TP
+.BR \-u ", " \-\-username " " \fIUSERNAME\fR
+Username for device authentication.
+
+.TP
+.BR \-P ", " \-\-password " " \fIPASSWORD\fR
+Password for device authentication.
+
+.TP
+.BR \-\-password\-file " " \fIFILE\fR
+Read password from file (more secure than command line).
+
+.SS "Scan Options"
+.TP
+.BR \-\-profile " " \fIPROFILE\fR
+Use a predefined scan profile. Available profiles:
+.RS
+.TP
+.B quick\-scan
+Fast scan with essential checks only.
+.TP
+.B full\-audit
+Comprehensive security audit of all checks.
+.TP
+.B compliance\-62443
+IEC 62443 compliance-focused audit.
+.TP
+.B network\-only
+Network security checks only.
+.RE
+
+.TP
+.BR \-c ", " \-\-category " " \fICATEGORIES\fR
+Comma-separated list of check categories to run.
+Available categories: auth, net, cfg, fw, proto, crypto.
+
+.TP
+.BR \-\-checks " " \fICHECK_IDS\fR
+Comma-separated list of specific check IDs to run.
+Example: AUTH\-001,NET\-001,CFG\-001
+
+.TP
+.BR \-\-exclude " " \fICHECK_IDS\fR
+Comma-separated list of check IDs to exclude.
+
+.TP
+.BR \-\-min\-severity " " \fILEVEL\fR
+Minimum severity level to report. Options: critical, high, medium, low, info.
+
+.TP
+.BR \-\-safe\-mode
+Only run safe, read-only checks (default: enabled).
+
+.TP
+.BR \-\-no\-safe\-mode
+Disable safe mode. Allows potentially disruptive checks.
+Use with caution on production systems.
+
+.SS "Output Options"
+.TP
+.BR \-f ", " \-\-format " " \fIFORMAT\fR
+Output report format. Options: text, html, json, markdown, rtf.
+Default: text.
+
+.TP
+.BR \-o ", " \-\-output " " \fIFILE\fR
+Write report to file. If not specified, output goes to stdout.
+
+.TP
+.BR \-\-no\-evidence
+Exclude detailed evidence from the report.
+
+.TP
+.BR \-v ", " \-\-verbose
+Enable verbose output with more detailed information.
+
+.TP
+.BR \-q ", " \-\-quiet
+Quiet mode with minimal output.
+
+.TP
+.BR \-\-no\-color
+Disable colored terminal output.
+
+.SS "Configuration Options"
+.TP
+.BR \-\-config " " \fIFILE\fR
+Path to YAML configuration file.
+
+.TP
+.BR \-\-log\-file " " \fIFILE\fR
+Path to log file for detailed logging.
+
+.TP
+.BR \-\-log\-level " " \fILEVEL\fR
+Log verbosity level. Options: debug, info, warning, error.
+Default: info.
+
+.SS "Information Options"
+.TP
+.B \-\-list\-checks
+List all available security checks and exit.
+
+.TP
+.B \-\-list\-profiles
+List available scan profiles and exit.
+
+.TP
+.B \-\-list\-categories
+List check categories and exit.
+
+.TP
+.B \-\-version
+Display version information and exit.
+
+.TP
+.BR \-h ", " \-\-help
+Display help message and exit.
+
+.SH CHECK CATEGORIES
+
+.TP
+.B AUTH
+Authentication & Access Control checks including default credentials,
+password policies, and session management.
+
+.TP
+.B NET
+Network Security checks including port scanning, service detection,
+and network segmentation assessment.
+
+.TP
+.B CFG
+Configuration Security checks including logging, NTP, backup
+configuration, and factory defaults detection.
+
+.TP
+.B FW
+Firmware & Updates checks including version analysis and
+known CVE detection.
+
+.TP
+.B PROTO
+Communication Protocol checks including Modbus, HTTP/HTTPS,
+and SNMP security.
+
+.TP
+.B CRYPTO
+Cryptographic Controls checks including encryption configuration
+and certificate validation.
+
+.SH SEVERITY LEVELS
+
+.TP
+.B CRITICAL
+Immediate risk requiring urgent attention. Examples: default credentials,
+no authentication required, critical CVEs.
+
+.TP
+.B HIGH
+Significant security risk. Examples: outdated firmware, insecure protocols,
+weak encryption.
+
+.TP
+.B MEDIUM
+Moderate risk that should be addressed. Examples: logging disabled,
+excessive session timeout.
+
+.TP
+.B LOW
+Minor issues with limited impact. Examples: NTP not configured,
+informational findings.
+
+.TP
+.B INFO
+Informational findings that may warrant review.
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success. No failed security checks.
+.TP
+.B 1
+Failed checks found with medium or low severity.
+.TP
+.B 2
+Critical or high severity findings detected.
+
+.SH EXAMPLES
+
+.TP
+Run a basic audit:
+.B woodwardcheck 192.168.1.100
+
+.TP
+Quick scan with HTML report:
+.B woodwardcheck 192.168.1.100 \-\-profile quick\-scan \-f html \-o report.html
+
+.TP
+Run only authentication checks:
+.B woodwardcheck 192.168.1.100 \-\-category auth
+
+.TP
+Run specific checks with verbose output:
+.B woodwardcheck 192.168.1.100 \-\-checks AUTH\-001,NET\-001 \-v
+
+.TP
+Full audit with JSON output for automation:
+.B woodwardcheck 192.168.1.100 \-\-profile full\-audit \-f json \-o audit.json
+
+.TP
+Only report high severity and above:
+.B woodwardcheck 192.168.1.100 \-\-min\-severity high
+
+.TP
+Use configuration file:
+.B woodwardcheck \-\-config /etc/woodwardcheck/config.yaml
+
+.TP
+List all available checks:
+.B woodwardcheck \-\-list\-checks
+
+.SH CONFIGURATION FILE
+The configuration file uses YAML format. Example:
+
+.nf
+target:
+  host: 192.168.1.100
+  port: 502
+  protocol: modbus\-tcp
+  timeout: 30
+
+scan:
+  categories:
+    \- auth
+    \- net
+    \- cfg
+  min_severity: medium
+  safe_mode: true
+
+output:
+  format: html
+  path: ./reports/
+  include_evidence: true
+
+logging:
+  level: INFO
+  file: ./woodwardcheck.log
+.fi
+
+.SH ENVIRONMENT
+.TP
+.B WOODWARDCHECK_CONFIG
+Path to default configuration file.
+
+.SH FILES
+.TP
+.I /etc/woodwardcheck/config.yaml
+System-wide configuration file.
+
+.TP
+.I ~/.config/woodwardcheck/config.yaml
+User configuration file.
+
+.TP
+.I ./woodwardcheck.yaml
+Local directory configuration file.
+
+.SH SECURITY CONSIDERATIONS
+.B woodwardcheck
+is designed for authorized security testing only. Always ensure
+you have proper authorization before scanning any systems.
+
+Safe mode (enabled by default) ensures only read-only checks are
+performed, preventing disruption to production systems. Disable
+safe mode with caution.
+
+The tool does not store credentials. Use \-\-password\-file for
+secure password handling instead of command-line arguments.
+
+.SH COMPLIANCE
+The tool maps findings to IEC 62443 requirements where applicable,
+supporting compliance audits for industrial control systems.
+
+.SH BUGS
+Report bugs at: https://github.com/woodwardcheck/woodwardcheck/issues
+
+.SH AUTHOR
+WoodwardCheck Team
+
+.SH SEE ALSO
+.BR nmap (1),
+.BR openssl (1),
+.BR modbus (7)
+
+.SH COPYRIGHT
+Copyright (C) 2024 WoodwardCheck Team.
+This is free software; see the source for copying conditions.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.
