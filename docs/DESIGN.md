@@ -21,7 +21,7 @@ WoodwardCheck is a comprehensive security auditing tool designed for Woodward Ea
 │         (HTML | JSON | RTF | Markdown | Text)                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                    Target Interface Layer                           │
-│              (Modbus TCP | HTTP API | SNMP)                         │
+│    (Modbus TCP | HTTP/HTTPS | SNMP | VNC | Telnet | SSH)            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -121,11 +121,15 @@ User Input → CLI Parser → Engine
 ### Network Security (NET)
 | Check ID | Description | Severity |
 |----------|-------------|----------|
-| NET-001 | Insecure protocols enabled (Telnet, FTP) | High |
+| NET-001 | Port Scan Analysis | Medium |
 | NET-002 | Unencrypted Modbus TCP | Medium |
-| NET-003 | SNMP v1/v2c in use | High |
-| NET-004 | Unnecessary ports open | Medium |
-| NET-005 | No network segmentation | High |
+| NET-003 | HTTP Without TLS | High |
+| NET-004 | SNMP Protocol Version | High |
+| NET-005 | Network Segmentation Check | High |
+| NET-006 | DNS Configuration | Low |
+| NET-007 | VNC Security Audit | High |
+| NET-008 | Telnet Security Audit | Critical |
+| NET-009 | SSH Security Audit | Medium |
 
 ### Configuration Security (CFG)
 | Check ID | Description | Severity |
@@ -158,7 +162,20 @@ User Input → CLI Parser → Engine
 - Modbus TCP (Port 502)
 - HTTP/HTTPS Web Interface (Port 80/443)
 - SNMP (Port 161)
+- VNC (Port 5900) - Security auditing with authentication checks
+- Telnet (Port 23) - Insecure protocol detection
+- SSH (Port 22) - Secure remote access configuration checks
 - ToolKit communication (Proprietary)
+
+### Protocol Port Configuration
+All protocol ports can be customized via command-line arguments:
+- `--modbus-port` - Modbus TCP port (default: 502)
+- `--http-port` - HTTP port (default: 80)
+- `--https-port` - HTTPS port (default: 443)
+- `--snmp-port` - SNMP port (default: 161)
+- `--vnc-port` - VNC port (default: 5900)
+- `--telnet-port` - Telnet port (default: 23)
+- `--ssh-port` - SSH port (default: 22)
 
 ### Register Map Knowledge Base
 The tool maintains a knowledge base of EasyGen 3500XT Modbus registers:
@@ -347,6 +364,15 @@ woodwardcheck/
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2024-01 | Initial release |
+| 1.1.0 | 2024-01 | Added VNC, Telnet, SSH protocol support and security auditing |
+
+## Author
+
+**WoodwardCheck Security Team**
+
+- Project Lead: WoodwardCheck Contributors
+- Email: security@woodwardcheck.io
+- GitHub: https://github.com/woodwardcheck/woodwardcheck
 
 ---
 

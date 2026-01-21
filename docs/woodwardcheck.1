@@ -40,12 +40,41 @@ Target port number. Default: 502 (Modbus TCP).
 
 .TP
 .BR \-\-protocol " " \fIPROTOCOL\fR
-Communication protocol to use. Options: modbus\-tcp, http, https, snmp.
+Communication protocol to use. Options: modbus\-tcp, http, https, snmp, vnc, telnet, ssh.
 Default: modbus\-tcp.
 
 .TP
 .BR \-\-timeout " " \fISECONDS\fR
 Connection timeout in seconds. Default: 30.
+
+.SS "Protocol Port Options"
+.TP
+.BR \-\-modbus\-port " " \fIPORT\fR
+Modbus TCP port. Default: 502.
+
+.TP
+.BR \-\-http\-port " " \fIPORT\fR
+HTTP port. Default: 80.
+
+.TP
+.BR \-\-https\-port " " \fIPORT\fR
+HTTPS port. Default: 443.
+
+.TP
+.BR \-\-snmp\-port " " \fIPORT\fR
+SNMP port. Default: 161.
+
+.TP
+.BR \-\-vnc\-port " " \fIPORT\fR
+VNC port. Default: 5900.
+
+.TP
+.BR \-\-telnet\-port " " \fIPORT\fR
+Telnet port. Default: 23.
+
+.TP
+.BR \-\-ssh\-port " " \fIPORT\fR
+SSH port. Default: 22.
 
 .SS "Authentication Options"
 .TP
@@ -177,7 +206,8 @@ password policies, and session management.
 .TP
 .B NET
 Network Security checks including port scanning, service detection,
-and network segmentation assessment.
+network segmentation assessment, VNC security audit (NET-007),
+Telnet security audit (NET-008), and SSH security audit (NET-009).
 
 .TP
 .B CFG
@@ -270,6 +300,14 @@ Use configuration file:
 List all available checks:
 .B woodwardcheck \-\-list\-checks
 
+.TP
+Run VNC and Telnet security audit with custom ports:
+.B woodwardcheck 192.168.1.100 \-\-vnc\-port 5901 \-\-telnet\-port 2323
+
+.TP
+Run SSH security audit on non-standard port:
+.B woodwardcheck 192.168.1.100 \-\-ssh\-port 2222 \-\-checks NET\-009
+
 .SH CONFIGURATION FILE
 The configuration file uses YAML format. Example:
 
@@ -336,7 +374,13 @@ supporting compliance audits for industrial control systems.
 Report bugs at: https://github.com/woodwardcheck/woodwardcheck/issues
 
 .SH AUTHOR
-WoodwardCheck Team
+.B WoodwardCheck Security Team
+.PP
+Project Lead: WoodwardCheck Contributors
+.br
+Email: security@woodwardcheck.io
+.br
+GitHub: https://github.com/woodwardcheck/woodwardcheck
 
 .SH SEE ALSO
 .BR nmap (1),
