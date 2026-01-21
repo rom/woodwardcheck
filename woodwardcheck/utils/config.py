@@ -37,6 +37,8 @@ class AuthConfig:
     username: Optional[str] = None
     password: Optional[str] = None
     password_file: Optional[str] = None
+    users_file: Optional[str] = None
+    passwords_file: Optional[str] = None
     use_default_creds: bool = True
 
     def get_password(self) -> Optional[str]:
@@ -45,6 +47,39 @@ class AuthConfig:
             with open(self.password_file, "r") as f:
                 return f.read().strip()
         return self.password
+
+    def get_default_credentials(self) -> List[Dict[str, str]]:
+        """
+        Get default credentials for testing.
+
+        Uses custom users_file and passwords_file if configured,
+        otherwise uses the default credential files.
+
+        Returns:
+            List of credential dictionaries with 'username' and 'password' keys
+        """
+        from .constants import load_default_credentials
+        return load_default_credentials(self.users_file, self.passwords_file)
+
+    def get_default_users(self) -> List[str]:
+        """
+        Get list of default usernames for testing.
+
+        Returns:
+            List of usernames
+        """
+        from .constants import get_default_users
+        return get_default_users(self.users_file)
+
+    def get_default_passwords(self) -> List[str]:
+        """
+        Get list of default passwords for testing.
+
+        Returns:
+            List of passwords
+        """
+        from .constants import get_default_passwords
+        return get_default_passwords(self.passwords_file)
 
 
 @dataclass
@@ -119,6 +154,8 @@ class Config:
                 username=auth_data.get("username"),
                 password=auth_data.get("password"),
                 password_file=auth_data.get("password_file"),
+                users_file=auth_data.get("users_file"),
+                passwords_file=auth_data.get("passwords_file"),
                 use_default_creds=auth_data.get("use_default_creds", True),
             )
 
@@ -212,6 +249,10 @@ class Config:
             self.auth.password = args.password
         if hasattr(args, "password_file") and args.password_file:
             self.auth.password_file = args.password_file
+        if hasattr(args, "users_file") and args.users_file:
+            self.auth.users_file = args.users_file
+        if hasattr(args, "passwords_file") and args.passwords_file:
+            self.auth.passwords_file = args.passwords_file
 
         # Scan
         if hasattr(args, "category") and args.category:
@@ -296,6 +337,8 @@ class Config:
             "authentication": {
                 "username": self.auth.username,
                 "use_default_creds": self.auth.use_default_creds,
+                "users_file": self.auth.users_file,
+                "passwords_file": self.auth.passwords_file,
             },
             "scan": {
                 "categories": [cat.name for cat in self.scan.categories],

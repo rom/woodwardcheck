@@ -277,13 +277,67 @@ logging:
   file: ./woodwardcheck.log
 ```
 
+## Credential Management
+
+### Default Credentials System
+
+WoodwardCheck includes a file-based default credentials system for testing common username/password combinations:
+
+```
+woodwardcheck/data/
+├── __init__.py           # Data loading utilities
+├── default_users.txt     # Default usernames (one per line)
+└── default_passwords.txt # Default passwords (one per line)
+```
+
+#### Credential File Format
+
+- One entry per line
+- Lines starting with `#` are treated as comments
+- Empty lines in password files represent empty passwords (common on ICS devices)
+- UTF-8 encoding
+
+#### Loading Credentials
+
+```python
+from woodwardcheck.data import load_default_users, load_default_passwords
+
+# Load from default files
+users = load_default_users()
+passwords = load_default_passwords()
+
+# Load from custom files
+users = load_default_users("/path/to/custom_users.txt")
+passwords = load_default_passwords("/path/to/custom_passwords.txt")
+```
+
+#### Configuration Options
+
+```yaml
+authentication:
+  username: admin              # Explicit username
+  password: password           # Explicit password
+  password_file: /path/to/pw   # Read password from file
+  users_file: /path/to/users   # Custom users file
+  passwords_file: /path/to/pw  # Custom passwords file
+  use_default_creds: true      # Enable default credential testing
+```
+
+### Credential Handling Security
+
+- Credentials are never stored or logged (passwords are masked in evidence)
+- Only usernames are recorded in audit trails
+- Default credentials are loaded on-demand, not hardcoded
+- Fallback to embedded credentials if files fail to load
+
 ## Security Considerations
 
 ### Tool Security
-- No hardcoded credentials
+- No hardcoded credentials in code (stored in separate data files)
 - Secure credential storage
 - Encrypted configuration files
 - Audit logging of tool usage
+- Passwords masked in all output and evidence
 
 ### Safe Scanning Practices
 - Read-only checks by default
@@ -316,6 +370,57 @@ logging:
 - pyyaml - Configuration parsing
 - rich - Terminal output formatting
 
+## Testing
+
+### Test Architecture
+
+WoodwardCheck uses pytest for comprehensive testing:
+
+```
+tests/
+├── conftest.py           # Shared fixtures and test configuration
+├── test_data.py          # Tests for credential file loading
+├── test_constants.py     # Tests for enums and constants
+├── test_config.py        # Tests for configuration management
+├── test_connection.py    # Tests for protocol connections
+├── test_base_module.py   # Tests for base module framework
+├── test_security_checks.py  # Tests for security checks
+├── test_reporters.py     # Tests for report generators
+├── test_engine.py        # Tests for audit engine
+└── test_cli.py           # Tests for CLI interface
+```
+
+### Test Categories
+
+1. **Unit Tests**: Individual component testing with mocks
+2. **Integration Tests**: Module interaction testing
+3. **Fixture-Based Tests**: Using pytest fixtures for test data
+
+### Running Tests
+
+```bash
+# All tests
+pytest
+
+# With coverage
+pytest --cov=woodwardcheck --cov-report=html
+
+# Specific module
+pytest tests/test_config.py
+
+# Verbose output
+pytest -v
+```
+
+### Test Fixtures
+
+Common fixtures are defined in `conftest.py`:
+- `temp_dir`: Temporary directory for file tests
+- `basic_config`: Standard configuration object
+- `mock_connection_manager`: Mocked connection manager
+- `sample_finding`: Sample Finding object
+- `sample_yaml_config`: Sample YAML configuration
+
 ## File Structure
 
 ```
@@ -324,6 +429,10 @@ woodwardcheck/
 │   ├── __init__.py
 │   ├── cli.py
 │   ├── engine.py
+│   ├── data/                    # Default credential files
+│   │   ├── __init__.py          # Data loading utilities
+│   │   ├── default_users.txt    # Default usernames
+│   │   └── default_passwords.txt # Default passwords
 │   ├── modules/
 │   │   ├── __init__.py
 │   │   ├── base.py
@@ -345,11 +454,20 @@ woodwardcheck/
 │       ├── logger.py
 │       ├── config.py
 │       └── constants.py
+├── tests/                       # Comprehensive test suite
+│   ├── conftest.py
+│   ├── test_data.py
+│   ├── test_constants.py
+│   ├── test_config.py
+│   ├── test_connection.py
+│   ├── test_base_module.py
+│   ├── test_security_checks.py
+│   ├── test_reporters.py
+│   ├── test_engine.py
+│   └── test_cli.py
 ├── docs/
 │   ├── DESIGN.md
 │   └── woodwardcheck.1
-├── tests/
-│   └── ...
 ├── reports/
 │   └── ...
 ├── README.md
@@ -365,6 +483,7 @@ woodwardcheck/
 |---------|------|---------|
 | 1.0.0 | 2024-01 | Initial release |
 | 1.1.0 | 2024-01 | Added VNC, Telnet, SSH protocol support and security auditing |
+| 1.2.0 | 2024-01 | Added file-based default credentials, custom credential files support, comprehensive unit tests |
 
 ## Author
 

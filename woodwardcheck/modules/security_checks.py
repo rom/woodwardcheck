@@ -18,6 +18,7 @@ from ..utils.constants import (
     CheckCategory,
     CheckResult,
     DEFAULT_CREDENTIALS,
+    load_default_credentials,
     Protocol,
     Severity,
 )
@@ -53,12 +54,20 @@ class SecurityChecksModule(BaseModule):
         evidence_list = []
         found_default_creds = []
 
+        # Get credentials from config or use defaults
+        credentials = self.config.get("credentials", DEFAULT_CREDENTIALS)
+        if not credentials:
+            # Try to load from custom files if specified in config
+            users_file = self.config.get("users_file")
+            passwords_file = self.config.get("passwords_file")
+            credentials = load_default_credentials(users_file, passwords_file)
+
         # Try to connect using default credentials
         http_conn = self.connection_manager.get_connection(Protocol.HTTP)
         result = http_conn.connect()
 
         if result.success:
-            for creds in DEFAULT_CREDENTIALS:
+            for creds in credentials:
                 username = creds["username"]
                 password = creds["password"]
 

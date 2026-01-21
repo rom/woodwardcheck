@@ -1,0 +1,36 @@
+# Default usernames for Woodward EasyGen and similar industrial control systems
+# These are commonly found on ICS devices and should be tested during security audits
+# One username per line. Lines starting with # are comments.
+
+# Common administrative accounts
+admin
+administrator
+root
+supervisor
+
+# Default user accounts
+user
+operator
+guest
+
+# Woodward-specific accounts
+woodward
+easygen
+service
+engineer
+
+# Industrial control system common accounts
+tech
+technician
+maintenance
+factory
+support
+config
+setup
+
+# OEM/Vendor accounts
+oem
+vendor
+
+# Empty username (some systems allow this)
+
