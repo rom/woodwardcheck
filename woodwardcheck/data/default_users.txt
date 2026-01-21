@@ -19,6 +19,8 @@ woodward
 easygen
 service
 engineer
+DataLog
+ServiceUser
 
 # Woodward EasyGen code level accounts
 # Code levels use numeric passwords (0000-9999), usernames may be blank
