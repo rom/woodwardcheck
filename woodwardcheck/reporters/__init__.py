@@ -4,7 +4,7 @@ Report generators for WoodwardCheck.
 Provides multiple output formats for audit results.
 """
 
-from .base import BaseReporter, ReportData
+from .base import BaseReporter, ReportData, TargetInfo
 from .html_reporter import HTMLReporter
 from .json_reporter import JSONReporter
 from .rtf_reporter import RTFReporter
@@ -14,6 +14,7 @@ from .text_reporter import TextReporter
 __all__ = [
     "BaseReporter",
     "ReportData",
+    "TargetInfo",
     "HTMLReporter",
     "JSONReporter",
     "RTFReporter",

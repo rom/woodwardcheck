@@ -88,7 +88,7 @@ Duration: {self._format_duration(data.duration_seconds)}\par
 \pard\ql\fs24\b Target Information\b0\par
 \fs20
 \par
-{\trowd\trgaph108\trleft-108
+{{\trowd\trgaph108\trleft-108
 \cellx2000\cellx6000
 \pard\intbl Field\cell Value\cell\row
 """
