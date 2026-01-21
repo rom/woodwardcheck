@@ -184,7 +184,12 @@ class BaseModule(ABC):
         start_time = datetime.now()
 
         try:
-            finding = check.function(self, **kwargs)
+            # Check if the function is a bound method (has __self__ attribute)
+            # If so, don't pass self again as it's already bound
+            if hasattr(check.function, '__self__'):
+                finding = check.function(**kwargs)
+            else:
+                finding = check.function(self, **kwargs)
             if finding:
                 finding.execution_time = (datetime.now() - start_time).total_seconds()
                 self._findings.append(finding)

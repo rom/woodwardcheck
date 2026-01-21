@@ -113,7 +113,8 @@ EASYGEN_3500XT_REGISTERS: Dict[str, ModbusRegister] = {
 }
 
 # Default credentials commonly found on EasyGen devices
-DEFAULT_CREDENTIALS: List[Dict[str, str]] = [
+# These serve as a fallback if credential files cannot be loaded
+_FALLBACK_CREDENTIALS: List[Dict[str, str]] = [
     {"username": "admin", "password": "admin"},
     {"username": "admin", "password": "password"},
     {"username": "admin", "password": "1234"},
@@ -125,6 +126,104 @@ DEFAULT_CREDENTIALS: List[Dict[str, str]] = [
     {"username": "easygen", "password": "easygen"},
     {"username": "service", "password": "service"},
 ]
+
+
+def load_default_credentials(
+    users_file: str = None,
+    passwords_file: str = None,
+) -> List[Dict[str, str]]:
+    """
+    Load default credentials from files.
+
+    Creates credential pairs by combining each username with each password.
+    Falls back to hardcoded credentials if files cannot be loaded.
+
+    Args:
+        users_file: Path to custom users file (uses default if None)
+        passwords_file: Path to custom passwords file (uses default if None)
+
+    Returns:
+        List of credential dictionaries with 'username' and 'password' keys
+    """
+    try:
+        from ..data import load_default_users, load_default_passwords
+        from pathlib import Path
+
+        users_path = Path(users_file) if users_file else None
+        passwords_path = Path(passwords_file) if passwords_file else None
+
+        users = load_default_users(users_path)
+        passwords = load_default_passwords(passwords_path)
+
+        if not users or not passwords:
+            return _FALLBACK_CREDENTIALS
+
+        # Generate credential combinations
+        credentials = []
+        for username in users:
+            for password in passwords:
+                credentials.append({"username": username, "password": password})
+
+        return credentials if credentials else _FALLBACK_CREDENTIALS
+
+    except Exception:
+        # Fall back to hardcoded credentials if loading fails
+        return _FALLBACK_CREDENTIALS
+
+
+def get_default_users(users_file: str = None) -> List[str]:
+    """
+    Get list of default usernames.
+
+    Args:
+        users_file: Path to custom users file (uses default if None)
+
+    Returns:
+        List of usernames
+    """
+    try:
+        from ..data import load_default_users
+        from pathlib import Path
+
+        users_path = Path(users_file) if users_file else None
+        users = load_default_users(users_path)
+        if users:
+            return users
+    except Exception:
+        pass
+
+    # Fallback to unique usernames from hardcoded credentials
+    return list(set(cred["username"] for cred in _FALLBACK_CREDENTIALS))
+
+
+def get_default_passwords(passwords_file: str = None) -> List[str]:
+    """
+    Get list of default passwords.
+
+    Args:
+        passwords_file: Path to custom passwords file (uses default if None)
+
+    Returns:
+        List of passwords
+    """
+    try:
+        from ..data import load_default_passwords
+        from pathlib import Path
+
+        passwords_path = Path(passwords_file) if passwords_file else None
+        passwords = load_default_passwords(passwords_path)
+        if passwords:
+            return passwords
+    except Exception:
+        pass
+
+    # Fallback to unique passwords from hardcoded credentials
+    return list(set(cred["password"] for cred in _FALLBACK_CREDENTIALS))
+
+
+# DEFAULT_CREDENTIALS is dynamically loaded from files
+# Use load_default_credentials() for custom file paths
+DEFAULT_CREDENTIALS: List[Dict[str, str]] = load_default_credentials()
 
 # Common insecure ports to check
 INSECURE_PORTS: Dict[int, str] = {

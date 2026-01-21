@@ -204,6 +204,14 @@ target:
     snmp: 161
     modbus_tcp: 502
 
+authentication:
+  username: admin
+  password: password
+  # Or use custom credential files for testing
+  users_file: /path/to/custom_users.txt
+  passwords_file: /path/to/custom_passwords.txt
+  use_default_creds: true
+
 scan:
   categories:
     - auth
@@ -226,6 +234,55 @@ Use with:
 ```bash
 woodwardcheck --config woodwardcheck.yaml
 ```
+
+## Default Credentials
+
+WoodwardCheck includes default credential files for testing common username/password combinations found on industrial control systems:
+
+- **Default Users File**: `woodwardcheck/data/default_users.txt`
+- **Default Passwords File**: `woodwardcheck/data/default_passwords.txt`
+
+These files contain common usernames and passwords found on Woodward devices and similar ICS equipment.
+
+### Using Custom Credential Files
+
+You can specify custom credential files in the configuration:
+
+```yaml
+authentication:
+  users_file: /path/to/my_users.txt
+  passwords_file: /path/to/my_passwords.txt
+```
+
+Or via command line (when supported):
+
+```bash
+woodwardcheck 192.168.1.100 --users-file custom_users.txt --passwords-file custom_passwords.txt
+```
+
+### Credential File Format
+
+Each file should contain one entry per line. Lines starting with `#` are comments:
+
+```text
+# Custom users file
+admin
+operator
+engineer
+custom_user
+```
+
+```text
+# Custom passwords file
+admin
+password
+1234
+# Empty password (leave a blank line)
+
+custom_password
+```
+
+**Note**: Empty passwords are supported (common on ICS devices) - just include a blank line in the passwords file.
 
 ### Command-Line Port Configuration
 
@@ -312,6 +369,10 @@ woodwardcheck/
 │   ├── __init__.py          # Package initialization
 │   ├── cli.py               # Command-line interface
 │   ├── engine.py            # Core audit engine
+│   ├── data/                # Default credential files
+│   │   ├── __init__.py      # Data loading utilities
+│   │   ├── default_users.txt    # Default usernames
+│   │   └── default_passwords.txt # Default passwords
 │   ├── modules/             # Security check modules
 │   │   ├── base.py          # Base module class
 │   │   ├── security_checks.py
@@ -329,16 +390,68 @@ woodwardcheck/
 │       ├── connection.py
 │       ├── constants.py
 │       └── logger.py
+├── tests/                   # Comprehensive test suite
+│   ├── conftest.py          # Pytest fixtures
+│   ├── test_data.py
+│   ├── test_constants.py
+│   ├── test_config.py
+│   ├── test_connection.py
+│   ├── test_base_module.py
+│   ├── test_security_checks.py
+│   ├── test_reporters.py
+│   ├── test_engine.py
+│   └── test_cli.py
 ├── docs/
 │   ├── DESIGN.md            # Design document
 │   └── woodwardcheck.1      # Man page
-├── tests/                   # Test suite
 ├── reports/                 # Default report output
 ├── README.md
 ├── LICENSE
 ├── setup.py
 ├── requirements.txt
 └── woodwardcheck.yaml.example
+```
+
+## Testing
+
+WoodwardCheck includes a comprehensive test suite using pytest.
+
+### Running Tests
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=woodwardcheck --cov-report=html
+
+# Run specific test file
+pytest tests/test_config.py
+
+# Run tests with verbose output
+pytest -v
+
+# Run only fast tests (skip slow integration tests)
+pytest -m "not slow"
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py           # Shared fixtures
+├── test_data.py          # Tests for data/credential file loading
+├── test_constants.py     # Tests for constants and enums
+├── test_config.py        # Tests for configuration management
+├── test_connection.py    # Tests for connection handlers
+├── test_base_module.py   # Tests for base module classes
+├── test_security_checks.py  # Tests for security check module
+├── test_reporters.py     # Tests for report generators
+├── test_engine.py        # Tests for audit engine
+└── test_cli.py           # Tests for CLI
 ```
 
 ## Contributing
