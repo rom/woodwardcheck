@@ -23,6 +23,9 @@ from ..utils.constants import (
     DEFAULT_PORTS,
     INSECURE_PORTS,
     SECURE_ALTERNATIVES,
+    VNC_PORTS,
+    WOODWARD_VNC_SETTINGS,
+    WOODWARD_DEVICE_TYPES,
 )
 
 
@@ -523,17 +526,25 @@ class NetworkAnalysisModule(BaseModule):
         references=["IEC 62443-4-2 CR 1.1", "IEC 62443-4-2 CR 4.1"],
     )
     def check_vnc_security(self, **kwargs) -> Finding:
-        """Check VNC security configuration."""
+        """Check VNC security configuration.
+
+        Scans multiple VNC ports (5900-5909) to detect VNC services running
+        on various display numbers.
+
+        For Woodward devices (EasyGen, Breaker-Control LS5/LS6), the following
+        VNC client settings are required:
+        - RelativePTR: false (must be disabled)
+        - Quality: high (must be set to high for proper display)
+        """
         evidence_list = []
         security_issues = []
 
         host = self.connection_manager.host
 
-        # Scan for VNC on common ports
-        vnc_ports = [5900, 5901, 5902, 5903]
+        # Scan for VNC on multiple ports (display :0 through :9)
         vnc_services = []
 
-        for port in vnc_ports:
+        for port in VNC_PORTS:
             is_open, banner = self._scan_port(host, port, timeout=3.0)
             if is_open:
                 vnc_services.append({
@@ -550,46 +561,56 @@ class NetworkAnalysisModule(BaseModule):
                 severity=Severity.HIGH,
                 result=CheckResult.INFO,
                 description="VNC service not detected",
-                details="No VNC services found on common ports (5900-5903)",
+                details=f"No VNC services found on ports {VNC_PORTS[0]}-{VNC_PORTS[-1]}",
                 evidence=evidence_list,
             )
 
         evidence_list.append(Evidence(
             type="vnc_scan",
             description="VNC service detection",
-            data={"vnc_services": vnc_services},
+            data={"vnc_services": vnc_services, "ports_scanned": VNC_PORTS},
         ))
 
-        # Test VNC connection security
-        vnc_conn = self.connection_manager.get_connection(Protocol.VNC)
-        result = vnc_conn.connect()
+        # Test VNC connection security on each detected service
+        for vnc_service in vnc_services:
+            port = vnc_service["port"]
+            self.connection_manager.set_custom_port(Protocol.VNC, port)
+            vnc_conn = self.connection_manager.get_connection(Protocol.VNC)
+            result = vnc_conn.connect()
 
-        if result.success:
-            metadata = result.metadata or {}
+            if result.success:
+                metadata = result.metadata or {}
 
-            evidence_list.append(Evidence(
-                type="vnc_connection",
-                description="VNC connection test",
-                data=metadata,
-            ))
-
-            # Check for no-auth vulnerability
-            if metadata.get("no_auth_required"):
-                security_issues.append("VNC allows connections without authentication")
-
-            # Check VNC version for known vulnerabilities
-            version = metadata.get("version", "")
-            if version:
                 evidence_list.append(Evidence(
-                    type="vnc_version",
-                    description="VNC protocol version",
-                    data={"version": version},
+                    type="vnc_connection",
+                    description=f"VNC connection test (port {port})",
+                    data=metadata,
                 ))
 
-            vnc_conn.disconnect()
+                # Check for no-auth vulnerability
+                if metadata.get("no_auth_required"):
+                    security_issues.append(f"VNC on port {port} allows connections without authentication")
+
+                # Check VNC version for known vulnerabilities
+                version = metadata.get("version", "")
+                if version:
+                    evidence_list.append(Evidence(
+                        type="vnc_version",
+                        description=f"VNC protocol version (port {port})",
+                        data={"version": version, "port": port},
+                    ))
+
+                vnc_conn.disconnect()
 
         # VNC is inherently insecure (no native encryption)
         security_issues.append("VNC transmits data without encryption by default")
+
+        # Add Woodward-specific VNC configuration notes
+        woodward_vnc_notes = (
+            "\n\nWoodward VNC Client Settings (Required for Breaker-Control LS5/LS6, EasyGen):\n"
+            f"- RelativePTR: {WOODWARD_VNC_SETTINGS['RelativePTR']} (must be false)\n"
+            f"- Quality: {WOODWARD_VNC_SETTINGS['Quality']} (must be high)"
+        )
 
         issues_text = "\n".join(f"- {issue}" for issue in security_issues)
 
@@ -601,9 +622,10 @@ class NetworkAnalysisModule(BaseModule):
             result=CheckResult.FAIL,
             description=f"VNC service found with {len(security_issues)} security concern(s)",
             details=f"VNC services detected on: {', '.join(str(s['port']) for s in vnc_services)}\n\n"
-                    f"Security concerns:\n{issues_text}",
+                    f"Security concerns:\n{issues_text}{woodward_vnc_notes}",
             remediation="Disable VNC if not required. If needed, use VNC over SSH tunnel or TLS. "
-                       "Ensure strong authentication is configured and restrict access via firewall rules.",
+                       "Ensure strong authentication is configured and restrict access via firewall rules. "
+                       "For Woodward devices, ensure VNC client RelativePTR is disabled and Quality is set to high.",
             evidence=evidence_list,
             cwe_ids=["CWE-287", "CWE-319"],
         )
@@ -813,5 +835,268 @@ class NetworkAnalysisModule(BaseModule):
             details=f"SSH is accessible on port 22\n"
                    f"Server: {banner if banner else 'Unknown'}\n\n"
                    "SSH provides encrypted remote access - ensure strong authentication is configured.",
+            evidence=evidence_list,
+        )
+
+    @check(
+        check_id="NET-010",
+        name="FTP Security Audit",
+        description="Check FTP service security configuration (insecure protocol)",
+        category=CheckCategory.NET,
+        severity=Severity.CRITICAL,
+        safe_mode_compatible=True,
+        cwe_ids=["CWE-319", "CWE-523", "CWE-287"],
+        references=["IEC 62443-4-2 CR 4.1", "NIST SP 800-82"],
+    )
+    def check_ftp_security(self, **kwargs) -> Finding:
+        """Check FTP security - FTP is inherently insecure.
+
+        FTP transmits credentials and data in cleartext, making it vulnerable
+        to credential theft and man-in-the-middle attacks. This check detects
+        FTP services and identifies additional risks like anonymous access.
+        """
+        evidence_list = []
+        security_issues = []
+
+        host = self.connection_manager.host
+
+        # Check if FTP port is open
+        is_open, banner = self._scan_port(host, 21, timeout=3.0)
+
+        if not is_open:
+            return Finding(
+                check_id="NET-010",
+                name="FTP Security Audit",
+                category=CheckCategory.NET,
+                severity=Severity.CRITICAL,
+                result=CheckResult.PASS,
+                description="FTP service not detected",
+                details="FTP (port 21) is not accessible - this is the secure configuration",
+                evidence=evidence_list,
+            )
+
+        evidence_list.append(Evidence(
+            type="ftp_port",
+            description="FTP service detected",
+            data={
+                "port": 21,
+                "state": "open",
+                "banner": banner,
+            },
+        ))
+
+        # Test FTP connection and gather security info
+        ftp_conn = self.connection_manager.get_connection(Protocol.FTP)
+        result = ftp_conn.connect()
+
+        if result.success:
+            metadata = result.metadata or {}
+            ftp_banner = metadata.get("banner", "")
+            server_info = metadata.get("server_info", "")
+            anonymous_allowed = metadata.get("anonymous_allowed", False)
+
+            evidence_list.append(Evidence(
+                type="ftp_connection",
+                description="FTP connection test",
+                data={
+                    "banner": ftp_banner,
+                    "server_info": server_info,
+                    "anonymous_allowed": anonymous_allowed,
+                    "cleartext_protocol": True,
+                },
+            ))
+
+            # Check for anonymous access (critical vulnerability)
+            if anonymous_allowed:
+                security_issues.append("CRITICAL: FTP allows anonymous access")
+                evidence_list.append(Evidence(
+                    type="ftp_anonymous",
+                    description="Anonymous FTP access allowed",
+                    data={"anonymous_allowed": True},
+                ))
+
+            # Check if banner reveals system information
+            if server_info:
+                evidence_list.append(Evidence(
+                    type="ftp_banner",
+                    description="FTP server information disclosure",
+                    data={"server_info": server_info},
+                ))
+                security_issues.append(f"FTP banner reveals server information: {server_info[:50]}")
+
+            ftp_conn.disconnect()
+
+        # FTP inherent security issues
+        security_issues.extend([
+            "FTP transmits all data including credentials in cleartext",
+            "FTP provides no protection against man-in-the-middle attacks",
+            "FTP is deprecated for file transfer on industrial systems",
+        ])
+
+        issues_text = "\n".join(f"- {issue}" for issue in security_issues)
+
+        return Finding(
+            check_id="NET-010",
+            name="FTP Security Audit",
+            category=CheckCategory.NET,
+            severity=Severity.CRITICAL,
+            result=CheckResult.FAIL,
+            description="CRITICAL: FTP service is enabled (insecure cleartext protocol)",
+            details=f"FTP is accessible on port 21\n\n"
+                    f"Security risks:\n{issues_text}\n\n"
+                    f"Banner: {banner if banner else 'Not captured'}",
+            remediation="Disable FTP immediately and use SFTP or SCP for secure file transfers. "
+                       "FTP transmits credentials in cleartext and should never be used on "
+                       "industrial control systems. If file transfer is required, implement "
+                       "SFTP over SSH or use secure file transfer protocols.",
+            evidence=evidence_list,
+            cwe_ids=["CWE-319", "CWE-523", "CWE-287"],
+        )
+
+    @check(
+        check_id="NET-011",
+        name="Woodward Device Detection",
+        description="Detect Woodward device type (EasyGen, Breaker-Control LS5/LS6)",
+        category=CheckCategory.NET,
+        severity=Severity.INFO,
+        safe_mode_compatible=True,
+        cwe_ids=[],
+        references=["Woodward Device Documentation"],
+    )
+    def check_woodward_device(self, **kwargs) -> Finding:
+        """Detect and identify Woodward device type.
+
+        Identifies Woodward devices including:
+        - EasyGen 3500XT Generator Controller
+        - Breaker-Control LS5 Switchgear Controller
+        - Breaker-Control LS6 Switchgear Controller
+
+        Detection is based on HTTP responses, VNC banners, and Modbus device identification.
+        """
+        evidence_list = []
+        detected_device = None
+        device_info = {}
+
+        host = self.connection_manager.host
+
+        # Try HTTP-based device detection
+        http_conn = self.connection_manager.get_connection(Protocol.HTTP)
+        http_result = http_conn.connect()
+
+        if http_result.success:
+            # Check for device identification via HTTP
+            response = http_conn.get("/")
+            if response and response[0] == 200:
+                body = response[2].decode("utf-8", errors="ignore").lower()
+
+                # Check for Woodward device signatures in HTTP response
+                if "easygen" in body or "3500xt" in body:
+                    detected_device = "EasyGen-3500XT"
+                    device_info["detection_method"] = "HTTP response"
+                elif "breaker-control" in body or "breaker control" in body:
+                    if "ls6" in body:
+                        detected_device = "Breaker-Control-LS6"
+                    elif "ls5" in body:
+                        detected_device = "Breaker-Control-LS5"
+                    else:
+                        detected_device = "Breaker-Control-LS5"  # Default to LS5
+                    device_info["detection_method"] = "HTTP response"
+                elif "woodward" in body:
+                    device_info["vendor"] = "Woodward"
+                    device_info["detection_method"] = "HTTP response (vendor only)"
+
+            # Check server headers for device info
+            if http_result.metadata:
+                headers = http_result.metadata.get("headers", {})
+                server = headers.get("Server", "")
+                if server:
+                    device_info["http_server"] = server
+                    if "woodward" in server.lower():
+                        device_info["vendor"] = "Woodward"
+
+            http_conn.disconnect()
+
+        # Try VNC-based detection
+        for port in VNC_PORTS[:4]:  # Check first 4 VNC ports
+            is_open, banner = self._scan_port(host, port, timeout=3.0)
+            if is_open and banner:
+                device_info["vnc_banner"] = banner
+                banner_lower = banner.lower()
+
+                if "easygen" in banner_lower or "3500" in banner_lower:
+                    detected_device = "EasyGen-3500XT"
+                    device_info["detection_method"] = f"VNC banner (port {port})"
+                    break
+                elif "breaker" in banner_lower or "ls5" in banner_lower or "ls6" in banner_lower:
+                    if "ls6" in banner_lower:
+                        detected_device = "Breaker-Control-LS6"
+                    else:
+                        detected_device = "Breaker-Control-LS5"
+                    device_info["detection_method"] = f"VNC banner (port {port})"
+                    break
+                elif "woodward" in banner_lower:
+                    device_info["vendor"] = "Woodward"
+
+        # Try Modbus device identification
+        modbus_conn = self.connection_manager.get_connection(Protocol.MODBUS_TCP)
+        modbus_result = modbus_conn.connect()
+
+        if modbus_result.success:
+            device_id = modbus_conn.read_device_id()
+            if device_id:
+                device_info["modbus_device_id"] = device_id
+            modbus_conn.disconnect()
+
+        evidence_list.append(Evidence(
+            type="device_detection",
+            description="Woodward device detection results",
+            data={
+                "detected_device": detected_device,
+                "device_info": device_info,
+                "supported_devices": list(WOODWARD_DEVICE_TYPES.keys()),
+            },
+        ))
+
+        if detected_device:
+            device_details = WOODWARD_DEVICE_TYPES.get(detected_device, {})
+            vnc_note = ""
+
+            if device_details.get("vnc_support"):
+                vnc_note = (
+                    "\n\nVNC Configuration for this device:\n"
+                    f"- RelativePTR: {WOODWARD_VNC_SETTINGS['RelativePTR']} (must be false)\n"
+                    f"- Quality: {WOODWARD_VNC_SETTINGS['Quality']} (must be high)"
+                )
+
+            return Finding(
+                check_id="NET-011",
+                name="Woodward Device Detection",
+                category=CheckCategory.NET,
+                severity=Severity.INFO,
+                result=CheckResult.INFO,
+                description=f"Woodward device detected: {detected_device}",
+                details=f"Device Type: {detected_device}\n"
+                       f"Description: {device_details.get('description', 'Unknown')}\n"
+                       f"Detection Method: {device_info.get('detection_method', 'Unknown')}\n"
+                       f"Expected Ports: {device_details.get('default_ports', [])}"
+                       f"{vnc_note}",
+                evidence=evidence_list,
+            )
+
+        # Device not positively identified
+        vendor_info = device_info.get("vendor", "Unknown")
+        return Finding(
+            check_id="NET-011",
+            name="Woodward Device Detection",
+            category=CheckCategory.NET,
+            severity=Severity.INFO,
+            result=CheckResult.INFO,
+            description=f"Device identification: {vendor_info if vendor_info != 'Unknown' else 'Could not positively identify device'}",
+            details="Could not positively identify Woodward device type.\n\n"
+                   f"Supported devices for detection:\n"
+                   f"- EasyGen-3500XT: Woodward EasyGen 3500XT Generator Controller\n"
+                   f"- Breaker-Control-LS5: Woodward Breaker-Control LS5 Switchgear Controller\n"
+                   f"- Breaker-Control-LS6: Woodward Breaker-Control LS6 Switchgear Controller\n\n"
+                   f"Gathered info: {device_info if device_info else 'None'}",
             evidence=evidence_list,
         )

@@ -659,6 +659,118 @@ class SSHConnection(BaseConnection):
         }
 
 
+class FTPConnection(BaseConnection):
+    """FTP connection handler for security auditing."""
+
+    # FTP response codes
+    FTP_READY = 220
+    FTP_AUTH_REQUIRED = 530
+    FTP_ANON_OK = 230
+    FTP_USER_OK = 331
+
+    def __init__(
+        self,
+        host: str,
+        port: int = 21,
+        timeout: int = 30
+    ):
+        super().__init__(host, port, timeout)
+        self._socket: Optional[socket.socket] = None
+        self._banner: Optional[str] = None
+        self._server_info: Optional[str] = None
+        self._anonymous_allowed: bool = False
+
+    def connect(self) -> ConnectionResult:
+        """Test FTP connectivity and gather security information."""
+        start_time = time.time()
+        try:
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._socket.settimeout(self.timeout)
+            self._socket.connect((self.host, self.port))
+
+            # Read FTP banner (220 response)
+            try:
+                self._socket.settimeout(5.0)
+                banner_data = self._socket.recv(1024)
+                self._banner = banner_data.decode("utf-8", errors="ignore").strip()
+
+                # Parse server info from banner
+                if self._banner.startswith("220"):
+                    # Extract server info after "220 " or "220-"
+                    self._server_info = self._banner[4:].strip() if len(self._banner) > 4 else ""
+            except Exception:
+                pass
+
+            # Test for anonymous access
+            try:
+                self._socket.send(b"USER anonymous\r\n")
+                self._socket.settimeout(3.0)
+                user_response = self._socket.recv(256).decode("utf-8", errors="ignore")
+
+                if user_response.startswith("331") or user_response.startswith("230"):
+                    # Server accepted anonymous user, try password
+                    self._socket.send(b"PASS anonymous@\r\n")
+                    pass_response = self._socket.recv(256).decode("utf-8", errors="ignore")
+
+                    if pass_response.startswith("230"):
+                        self._anonymous_allowed = True
+            except Exception:
+                pass
+
+            self._connected = True
+            response_time = time.time() - start_time
+
+            return ConnectionResult(
+                success=True,
+                protocol=Protocol.FTP,
+                host=self.host,
+                port=self.port,
+                response_time=response_time,
+                metadata={
+                    "banner": self._banner,
+                    "server_info": self._server_info,
+                    "anonymous_allowed": self._anonymous_allowed,
+                    "cleartext_protocol": True,
+                },
+            )
+        except socket.error as e:
+            return ConnectionResult(
+                success=False,
+                protocol=Protocol.FTP,
+                host=self.host,
+                port=self.port,
+                error=str(e),
+            )
+
+    def disconnect(self) -> None:
+        """Close FTP connection."""
+        if self._socket:
+            try:
+                # Send QUIT command
+                self._socket.send(b"QUIT\r\n")
+            except Exception:
+                pass
+            try:
+                self._socket.close()
+            except Exception:
+                pass
+            self._socket = None
+        self._connected = False
+
+    def is_connected(self) -> bool:
+        """Check FTP connection status."""
+        return self._connected and self._socket is not None
+
+    def get_security_info(self) -> Dict[str, Any]:
+        """Get FTP security information."""
+        return {
+            "banner": self._banner,
+            "server_info": self._server_info,
+            "anonymous_allowed": self._anonymous_allowed,
+            "cleartext_protocol": True,
+        }
+
+
 class ConnectionManager:
     """Manager for handling multiple protocol connections."""
 
@@ -714,6 +826,10 @@ class ConnectionManager:
                 )
             elif protocol == Protocol.SSH:
                 self._connections[protocol] = SSHConnection(
+                    self.host, port, self.timeout
+                )
+            elif protocol == Protocol.FTP:
+                self._connections[protocol] = FTPConnection(
                     self.host, port, self.timeout
                 )
 
